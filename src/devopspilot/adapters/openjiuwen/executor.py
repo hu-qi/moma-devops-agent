@@ -182,6 +182,7 @@ class OpenJiuwenTaskExecutor:
         )
         capture.start()
         capture_result = None
+        runtime_timed_out = False
         await Runner.start()
         try:
             async with asyncio.timeout(self._completion_timeout):
@@ -194,11 +195,16 @@ class OpenJiuwenTaskExecutor:
                     ),
                 ):
                     pass
-        except TimeoutError as exc:
-            raise RuntimeError(
-                "OpenJiuwen AgentTeam exceeded delivery execution timeout "
-                f"({self._completion_timeout}s)"
-            ) from exc
+        except TimeoutError:
+            # OpenJiuwen AgentTeam can currently finish useful coding/review work
+            # while its streaming lifecycle remains open. Treat this as runtime
+            # degradation, not task success. Deterministic postconditions below
+            # still decide whether the software-engineering result is acceptable.
+            runtime_timed_out = True
+            print(
+                "DEVOPSPILOT_RUNTIME_DEGRADED=agentteam_timeout "
+                f"timeout_seconds={self._completion_timeout}"
+            )
         finally:
             try:
                 await Runner.stop()
@@ -300,6 +306,10 @@ class OpenJiuwenTaskExecutor:
                 "input_tokens": str(runtime_metrics["input_tokens"]),
                 "output_tokens": str(runtime_metrics["output_tokens"]),
                 "capture_issues": str(len(capture_result.issues)),
+                "runtime_degraded": "true" if runtime_timed_out else "false",
+                "runtime_degradation_reason": (
+                    "agentteam_timeout" if runtime_timed_out else ""
+                ),
             },
         )
 
