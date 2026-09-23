@@ -12,10 +12,13 @@ from typing import Any, Mapping
 
 from devopspilot.contracts.model_intelligence import (
     ModelCapability,
+    ModelRuntimeFeature,
     RouteMode,
     RoutingDecision,
     TaskProfile,
 )
+
+from .catalog import evidence_for_model, verified_features_for_model
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +26,7 @@ class MoMARoute:
     model_id: str
     mode: RouteMode = RouteMode.DIRECT
     fallback_model_ids: tuple[str, ...] = ()
+    verified_features: frozenset[ModelRuntimeFeature] | None = None
     metadata: Mapping[str, Any] | None = None
 
 
@@ -95,11 +99,22 @@ class MoMAProvider:
                 "using the configured MoMA capability route."
             )
 
+        evidence = evidence_for_model(route.model_id)
+        verified_features = (
+            route.verified_features
+            if route.verified_features is not None
+            else verified_features_for_model(route.model_id)
+        )
+
         metadata = dict(route.metadata or {})
         metadata.update({
             "task_type": task.task_type.value,
             "risk_level": task.risk_level.value,
             "complexity": task.complexity,
+            "model_capability_evidence": evidence.evidence if evidence else "unverified",
+            "tool_agent_eligible": (
+                evidence.eligible_for_tool_agent if evidence else None
+            ),
         })
         return RoutingDecision(
             provider_id=self.provider_id,
@@ -108,6 +123,7 @@ class MoMAProvider:
             mode=route.mode,
             model_id=route.model_id,
             fallback_model_ids=route.fallback_model_ids,
+            verified_features=verified_features,
             reason=reason,
             metadata=metadata,
         )

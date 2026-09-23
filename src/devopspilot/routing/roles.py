@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 
 from devopspilot.contracts.model_intelligence import (
     ModelCapability,
+    ModelRuntimeFeature,
     RoutingDecision,
     TaskProfile,
 )
@@ -20,7 +21,11 @@ class AgentTeamModelPlan:
 
 
 class AgentTeamModelPlanner:
-    """Resolve independent model decisions for core delivery-team roles."""
+    """Resolve and capability-gate models for core delivery-team roles."""
+
+    REQUIRED_TOOL_FEATURES = frozenset({
+        ModelRuntimeFeature.STRUCTURED_TOOL_CALLING,
+    })
 
     def __init__(self, provider: MaaSProvider) -> None:
         self._provider = provider
@@ -54,8 +59,35 @@ class AgentTeamModelPlanner:
             review_profile,
             ModelCapability.REVIEW,
         )
+
+        self._require_tool_role("leader", leader)
+        self._require_tool_role("coding", coding)
+        self._require_tool_role("review", review)
+
         return AgentTeamModelPlan(
             leader=leader,
             coding=coding,
             review=review,
+        )
+
+    @classmethod
+    def _require_tool_role(
+        cls,
+        role: str,
+        decision: RoutingDecision,
+    ) -> None:
+        missing = cls.REQUIRED_TOOL_FEATURES - decision.verified_features
+        if not missing:
+            return
+
+        missing_text = ", ".join(sorted(feature.value for feature in missing))
+        evidence = decision.metadata.get(
+            "model_capability_evidence",
+            "unverified",
+        )
+        raise RuntimeError(
+            f"Model {decision.model_id!r} cannot be assigned to AgentTeam "
+            f"role {role!r}: missing verified runtime features "
+            f"[{missing_text}]; evidence={evidence}. "
+            "Run the model capability gate or configure a verified fallback."
         )

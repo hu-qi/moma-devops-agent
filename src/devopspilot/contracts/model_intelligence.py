@@ -34,6 +34,14 @@ class ModelCapability(StrEnum):
     JUDGE = "judge"
 
 
+class ModelRuntimeFeature(StrEnum):
+    BASIC_CHAT = "basic-chat"
+    STRUCTURED_TOOL_CALLING = "structured-tool-calling"
+    STREAMING = "streaming"
+    STRUCTURED_OUTPUT = "structured-output"
+    VISION = "vision"
+
+
 class RouteMode(StrEnum):
     """How a MaaS provider resolves the concrete model."""
 
@@ -87,6 +95,10 @@ class RoutingDecision:
 
     connection_ref points to runtime configuration/secret storage. It is not
     an API key and must never contain credentials.
+
+    verified_features contains only capabilities backed by live/provider
+    evidence. Tool-using AgentTeam roles must not infer features from model
+    names.
     """
 
     provider_id: str
@@ -96,6 +108,7 @@ class RoutingDecision:
     model_id: str
     reason: str
     fallback_model_ids: tuple[str, ...] = ()
+    verified_features: frozenset[ModelRuntimeFeature] = frozenset()
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
