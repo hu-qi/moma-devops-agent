@@ -1,0 +1,37 @@
+name: Delivery State Store
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/delivery.py"
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/contracts/state.py"
+      - "src/devopspilot/persistence/**"
+      - "experiments/delivery-state-store-smoke/**"
+      - ".github/workflows/delivery-state-store.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/delivery.py"
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/contracts/state.py"
+      - "src/devopspilot/persistence/**"
+      - "experiments/delivery-state-store-smoke/**"
+      - ".github/workflows/delivery-state-store.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  state-store:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate SQLite delivery persistence
+        env:
+          PYTHONPATH: src
+        run: python experiments/delivery-state-store-smoke/main.py
