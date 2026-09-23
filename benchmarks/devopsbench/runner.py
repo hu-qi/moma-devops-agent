@@ -1,27 +1,31 @@
-"""Minimal deterministic DevOpsBench runner.
+"""Deterministic DevOpsBench v0.1 runner.
 
-V0.1 validates benchmark metadata and the seeded fixture precondition.
-Agent execution is intentionally not coupled to this runner yet.
+Two different questions are intentionally separated:
 
-Contract:
-- precondition: what must be true before the Agent starts;
-- oracle: what must be true after the Agent finishes.
+1. validate-fixtures:
+   Is the benchmark case itself valid and does its initial state reproduce the
+   intended defect/precondition?
+
+2. evaluate:
+   Does a candidate workspace satisfy the target oracle?
+
+Agent execution is deliberately outside this module. Adapters prepare a
+candidate workspace, then call the deterministic evaluator.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import shutil
 import subprocess
-import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES_DIR = ROOT / "cases"
-
 REQUIRED_FIELDS = {
     "id",
     "version",
@@ -44,87 +48,222 @@ def load_case(case_dir: Path) -> dict[str, Any]:
     missing = sorted(REQUIRED_FIELDS - set(case))
     if missing:
         raise ValueError(f"{case_dir.name}: missing fields: {', '.join(missing)}")
+
+    fixture = case.get("fixture")
+    if not isinstance(fixture, dict) or not fixture.get("path"):
+        raise ValueError(f"{case_dir.name}: fixture.path is required")
+
+    oracle_type = case.get("oracle", {}).get("type")
+    if oracle_type not in {"command-exit", "structured-review"}:
+        raise ValueError(f"{case_dir.name}: unsupported oracle type: {oracle_type!r}")
+
     return case
 
 
-def _run_command(workspace: Path, command: str, timeout: int) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+def fixture_path(case_dir: Path, case: dict[str, Any]) -> Path:
+    path = (case_dir / case["fixture"]["path"]).resolve()
+    if not path.exists() or not path.is_dir():
+        raise FileNotFoundError(f"{case_dir.name}: fixture not found: {path}")
+    return path
+
+
+def run_command(command: str, cwd: Path, timeout: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    completed = subprocess.run(
         command,
-        cwd=workspace,
+        cwd=cwd,
         shell=True,
         text=True,
         capture_output=True,
         timeout=timeout,
         check=False,
     )
+    return {
+        "exit_code": completed.returncode,
+        "elapsed_seconds": round(time.perf_counter() - started, 4),
+        "stdout": completed.stdout[-4000:],
+        "stderr": completed.stderr[-4000:],
+    }
 
 
-def validate_seed(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
-    fixture_src = case_dir / case["fixture"]["path"]
-    if not fixture_src.exists():
-        raise FileNotFoundError(f"fixture not found: {fixture_src}")
-
+def validate_precondition(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
+    workspace = fixture_path(case_dir, case)
     precondition = case.get("precondition")
     if not precondition:
         return {
             "case_id": case["id"],
-            "category": case["category"],
-            "phase": "seed-validation",
-            "status": "metadata-only",
+            "status": "error",
+            "reason": "missing precondition",
         }
 
-    started = time.perf_counter()
-    timeout = int(case.get("budget", {}).get("timeout_seconds", 60))
+    kind = precondition.get("type")
+    if kind == "command-exit":
+        result = run_command(
+            precondition["command"],
+            workspace,
+            int(case["budget"]["timeout_seconds"]),
+        )
+        expected = int(precondition["expected_exit_code"])
+        return {
+            "case_id": case["id"],
+            "status": "pass" if result["exit_code"] == expected else "fail",
+            "precondition_type": kind,
+            "expected_exit_code": expected,
+            **result,
+        }
 
-    with tempfile.TemporaryDirectory(prefix="devopsbench-") as td:
-        workspace = Path(td) / "workspace"
-        shutil.copytree(fixture_src, workspace)
-
-        if precondition["type"] == "command-exit":
-            completed = _run_command(workspace, precondition["command"], timeout)
-            expected = int(precondition["expected_exit_code"])
-            ok = completed.returncode == expected
-            detail = {
-                "exit_code": completed.returncode,
-                "expected_exit_code": expected,
-                "stdout": completed.stdout[-4000:],
-                "stderr": completed.stderr[-4000:],
+    if kind == "file-contains":
+        target = workspace / precondition["path"]
+        if not target.exists():
+            return {
+                "case_id": case["id"],
+                "status": "fail",
+                "precondition_type": kind,
+                "reason": f"missing file: {precondition['path']}",
             }
-        elif precondition["type"] == "file-contains":
-            target = workspace / precondition["path"]
-            body = target.read_text(encoding="utf-8")
-            missing = [item for item in precondition["contains"] if item not in body]
-            ok = not missing
-            detail = {"missing_fragments": missing}
-        else:
-            raise ValueError(f"{case['id']}: unsupported precondition type: {precondition['type']}")
+        content = target.read_text(encoding="utf-8")
+        missing = [needle for needle in precondition["contains"] if needle not in content]
+        return {
+            "case_id": case["id"],
+            "status": "pass" if not missing else "fail",
+            "precondition_type": kind,
+            "missing_markers": missing,
+        }
 
     return {
         "case_id": case["id"],
-        "category": case["category"],
-        "phase": "seed-validation",
-        "status": "pass" if ok else "fail",
-        "elapsed_seconds": round(time.perf_counter() - started, 4),
-        **detail,
+        "status": "error",
+        "reason": f"unsupported precondition type: {kind!r}",
     }
+
+
+def validate_fixtures() -> dict[str, Any]:
+    results: list[dict[str, Any]] = []
+    for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
+        try:
+            case = load_case(case_dir)
+            results.append(validate_precondition(case_dir, case))
+        except Exception as exc:  # benchmark validation should report all cases
+            results.append(
+                {
+                    "case_id": case_dir.name,
+                    "status": "error",
+                    "reason": f"{type(exc).__name__}: {exc}",
+                }
+            )
+
+    return {
+        "mode": "validate-fixtures",
+        "total": len(results),
+        "passed": sum(r["status"] == "pass" for r in results),
+        "failed": sum(r["status"] in {"fail", "error"} for r in results),
+        "results": results,
+    }
+
+
+def evaluate_command_oracle(
+    case: dict[str, Any],
+    workspace: Path,
+    *,
+    variant: str,
+    run_id: str,
+) -> dict[str, Any]:
+    oracle = case["oracle"]
+    result = run_command(
+        oracle["command"],
+        workspace,
+        int(case["budget"]["timeout_seconds"]),
+    )
+    expected = int(oracle["expected_exit_code"])
+    success = result["exit_code"] == expected
+    return {
+        "case_id": case["id"],
+        "run_id": run_id,
+        "variant": variant,
+        "status": "passed" if success else "failed",
+        "task_success": success,
+        "test_pass": success if case["category"] == "coding" else None,
+        "ci_pass": success if case["category"] == "ci-debug" else None,
+        "regression_count": 0,
+        "duration_ms": int(result["elapsed_seconds"] * 1000),
+        "model_calls": 0,
+        "tool_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost": None,
+        "human_interventions": 0,
+        "artifacts": [],
+        "failure_reason": None if success else result["stderr"] or result["stdout"],
+        "oracle": {
+            "expected_exit_code": expected,
+            **result,
+        },
+    }
+
+
+def evaluate_case(case_id: str, workspace: Path, variant: str, run_id: str) -> dict[str, Any]:
+    match: tuple[Path, dict[str, Any]] | None = None
+    for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
+        case = load_case(case_dir)
+        if case["id"] == case_id or case_dir.name == case_id:
+            match = (case_dir, case)
+            break
+    if match is None:
+        raise ValueError(f"unknown case: {case_id}")
+
+    _, case = match
+    if not workspace.exists() or not workspace.is_dir():
+        raise FileNotFoundError(f"candidate workspace not found: {workspace}")
+
+    oracle_type = case["oracle"]["type"]
+    if oracle_type == "command-exit":
+        return evaluate_command_oracle(
+            case,
+            workspace.resolve(),
+            variant=variant,
+            run_id=run_id,
+        )
+
+    raise NotImplementedError(
+        "structured-review candidate evaluation requires the Agent-result adapter "
+        "and is intentionally not guessed by the deterministic runner"
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="DevOpsBench v0.1")
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("validate-fixtures", help="Verify that benchmark initial states reproduce their intended defect")
+
+    evaluate = sub.add_parser("evaluate", help="Evaluate a prepared candidate workspace")
+    evaluate.add_argument("--case", required=True)
+    evaluate.add_argument("--workspace", required=True)
+    evaluate.add_argument("--variant", default="manual")
+    evaluate.add_argument("--run-id", default=None)
+    return parser
 
 
 def main() -> None:
-    results: list[dict[str, Any]] = []
+    args = build_parser().parse_args()
+    command = args.command or "validate-fixtures"
 
-    for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
-        case = load_case(case_dir)
-        results.append(validate_seed(case_dir, case))
+    if command == "validate-fixtures":
+        result = validate_fixtures()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        raise SystemExit(0 if result["failed"] == 0 else 1)
 
-    summary = {
-        "phase": "seed-validation",
-        "total": len(results),
-        "passed": sum(r["status"] == "pass" for r in results),
-        "failed": sum(r["status"] == "fail" for r in results),
-        "metadata_only": sum(r["status"] == "metadata-only" for r in results),
-        "results": results,
-    }
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    if command == "evaluate":
+        result = evaluate_case(
+            args.case,
+            Path(args.workspace),
+            args.variant,
+            args.run_id or f"run-{uuid.uuid4().hex[:12]}",
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        raise SystemExit(0 if result["task_success"] else 1)
+
+    raise SystemExit(f"unsupported command: {command}")
 
 
 if __name__ == "__main__":
