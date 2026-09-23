@@ -208,3 +208,23 @@ This spike is complete when we can demonstrate:
 - one deterministic RSI/evolution candidate is generated;
 - DevOpsBench can compare baseline vs candidate;
 - candidate can be rejected without mutating the active production artifact.
+
+
+## Live Verification — 2026-09-23
+
+Workflow `MoMA Capability Spikes` run `35877219890`: **SUCCESS**.
+
+Runtime evidence:
+- DevOps Leader started through `TeamAgentSpec`.
+- Leader dynamically created Coding and Review teammates.
+- Separate workspaces existed for `coding-agent` and `review-agent`.
+- Task graph assigned coding first and Review as a dependent independent task.
+- Review member executed its own MoMA/OpenJiuwen LLM + tool loop.
+- Team checkpoint persisted successfully.
+- RSI runtime accepted the same MoMA-backed model and built `AutoHarnessOrchestrator`.
+
+Conclusion:
+
+> Dynamic AgentTeam + MoMA + OpenJiuwen RSI is no longer an architectural assumption; the foundational runtime path is live-verified.
+
+The next validation is product-level rather than runtime-level: prove that the team topology improves DevOpsBench outcomes versus a single Agent.
