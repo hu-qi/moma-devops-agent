@@ -320,3 +320,66 @@ A live model-router AgentTeam run is currently the next gate.
 A separate MoMA Role Model Gate is testing candidate models for the minimum
 AgentTeam requirement: basic completion + OpenAI-compatible function calling.
 Only models that pass the gate may become role defaults.
+
+
+## 2026-09-24 — MoMA Role Capability Gate
+
+### Action Failure Triage
+
+Recent red/cancelled Actions were classified into distinct causes instead of being treated as one MoMA outage:
+
+1. **Model capability mismatch**
+   - `DeepSeek-R1-0528`: basic chat works, but requested function use is emitted as text/pseudo-call; no structured OpenAI `tool_calls`.
+   - `qwen2.5-coder-32b-Instruct`: basic chat works, but function invocation is emitted as JSON/text rather than structured `tool_calls`.
+   - These models are therefore ineligible for the current OpenJiuwen tool-using AgentTeam roles.
+
+2. **Capability-qualified role models**
+   - Leader / Reasoning: `GLM-5.3`
+   - Coding: `Qwen3-32B`
+   - Review: `deepseek-v4.1-flash`
+   - All three passed strict live basic-chat + structured Tool Calling gates through MoMA.
+
+3. **Expected workflow cancellation**
+   - Several TaskExecutor runs were superseded by `cancel-in-progress` during rapid integration commits.
+   - These are CI orchestration events, not model failures.
+
+4. **Expected multimodal capability probe**
+   - OpenJiuwen auto-probed image input against text/code models and received an expected HTTP 400.
+   - The runtime correctly degraded and previous DevOpsBench execution still succeeded.
+   - DevOpsPilot now explicitly sets `enable_read_image_multimodal=False` for code-only AgentTeam members.
+
+5. **Integration defects already fixed**
+   - OpenJiuwen storage type was initially configured as `inmemory`; the actual registered alias is `memory`.
+   - Provider/path/runtime-cache guards were hardened through CI rather than attributed to MoMA.
+
+### Runtime Guard
+
+Live model evidence is now projected into:
+
+```text
+RoutingDecision.verified_features
+```
+
+Tool-using AgentTeam roles require:
+
+```text
+structured-tool-calling
+```
+
+Known-ineligible or unverified models are rejected before team execution.
+
+### Action Noise Reduction
+
+- Candidate model probes are report-only.
+- Only selected role models use strict capability gates.
+- Expensive role-model ablations are manual-only.
+- TaskExecutor has a bounded overall execution timeout and phase markers.
+- Trajectory workflow now supersedes stale runs.
+- Future multi-file changes should prefer batch commits to reduce redundant workflow invocations.
+
+### Next
+
+- Complete heterogeneous AgentTeam baseline on DevOpsBench.
+- Use controlled role-model ablations only among capability-qualified models.
+- Capture OpenJiuwen canonical spans into DevOpsPilot `DeliveryTrajectory`.
+- Use trajectory evidence for DevOpsBench metrics and RSI candidate generation.
