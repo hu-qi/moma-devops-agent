@@ -31,13 +31,13 @@ jobs:
           mkdir -p artifacts
           {
             echo "=== VERSION ==="
-            cnb --version || true
+            cnb --version
             echo
             echo "=== ROOT ==="
             cnb --help
             echo
-            echo "=== REPOS ==="
-            cnb repos --help
+            echo "=== REPOSITORIES ==="
+            cnb repositories --help
             echo
             echo "=== ISSUES ==="
             cnb issues --help
@@ -47,6 +47,15 @@ jobs:
             echo
             echo "=== BUILD ==="
             cnb build --help
+
+            echo
+            echo "=== KEY TOOL HELP ==="
+            for cmd in               "repositories get-repository"               "issues get-issue"               "issues post-issue-comment"               "pulls get-pull"               "pulls post-pull"               "pulls post-pull-review"               "pulls get-ci-logs"               "build start-build"               "build get-build-status"               "build get-build-logs"               "build stop-build"
+            do
+              echo
+              echo "--- cnb $cmd --help ---"
+              cnb $cmd --help || true
+            done
           } | tee artifacts/cnb-cli-surface.txt
 
       - uses: actions/upload-artifact@v4
