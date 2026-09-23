@@ -1,0 +1,33 @@
+name: Core Provider Contract
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/providers.py"
+      - "experiments/provider-contract-smoke/**"
+      - ".github/workflows/core-provider-contract.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/providers.py"
+      - "experiments/provider-contract-smoke/**"
+      - ".github/workflows/core-provider-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run provider contract smoke
+        env:
+          PYTHONPATH: src
+        run: python experiments/provider-contract-smoke/main.py
