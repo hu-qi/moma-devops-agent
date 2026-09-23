@@ -1,0 +1,56 @@
+name: MoMA × OpenJiuwen Spike
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+      OPENJIUWEN_SPEC: ${{ vars.OPENJIUWEN_SPEC }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate configuration
+        shell: bash
+        run: |
+          test -n "$MOMA_API_BASE" || (echo "Missing Actions variable MOMA_API_BASE" && exit 1)
+          test -n "$MOMA_MODEL" || (echo "Missing Actions variable MOMA_MODEL" && exit 1)
+          test -n "$MOMA_API_KEY" || (echo "Missing Actions secret MOMA_API_KEY" && exit 1)
+
+      - name: Install OpenJiuwen
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          if [ -n "$OPENJIUWEN_SPEC" ]; then
+            echo "Installing OpenJiuwen from configured OPENJIUWEN_SPEC"
+            python -m pip install "$OPENJIUWEN_SPEC"
+          else
+            echo "OPENJIUWEN_SPEC is not configured; using the verified RSI-capable develop snapshot"
+            python -m pip install "git+https://github.com/openJiuwen-ai/agent-core.git@9e3390195a9ea15235b2b5f7412cb2aa440622cc"
+          fi
+
+      - name: Show OpenJiuwen version
+        shell: bash
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          print("openjiuwen =", importlib.metadata.version("openjiuwen"))
+          PY
+
+      - name: Run MoMA × OpenJiuwen probe
+        run: python experiments/moma-openjiuwen-poc/main.py
