@@ -13,6 +13,8 @@ from devopspilot.contracts.providers import (
     CIProvider,
     CIRunRef,
     ChangeRequestRef,
+    CommentSubjectKind,
+    CommentSubjectRef,
     RepositoryRef,
     ReviewRef,
     ReviewState,
@@ -27,20 +29,15 @@ class FakeSCMProvider:
     provider_id = "fake-scm"
 
     async def capabilities(self) -> frozenset[SCMCapability]:
-        return frozenset(
-            {
-                SCMCapability.ISSUES,
-                SCMCapability.CHANGE_REQUESTS,
-                SCMCapability.REVIEWS,
-                SCMCapability.WEBHOOKS,
-            }
-        )
+        return frozenset({
+            SCMCapability.ISSUES,
+            SCMCapability.CHANGE_REQUESTS,
+            SCMCapability.REVIEWS,
+            SCMCapability.WEBHOOKS,
+        })
 
     async def normalize_webhook(
-        self,
-        *,
-        headers: Mapping[str, str],
-        body: bytes,
+        self, *, headers: Mapping[str, str], body: bytes,
     ) -> SCMEvent:
         payload = json.loads(body or b"{}")
         repo = await self.get_repository("demo/repo")
@@ -61,16 +58,12 @@ class FakeSCMProvider:
         )
 
     async def get_work_item(
-        self,
-        repository: RepositoryRef,
-        item_id: str,
+        self, repository: RepositoryRef, item_id: str,
     ) -> WorkItemRef:
         return WorkItemRef(repository=repository, item_id=item_id, title="Demo issue")
 
     async def get_change_request(
-        self,
-        repository: RepositoryRef,
-        change_id: str,
+        self, repository: RepositoryRef, change_id: str,
     ) -> ChangeRequestRef:
         return ChangeRequestRef(
             repository=repository,
@@ -82,13 +75,8 @@ class FakeSCMProvider:
         )
 
     async def create_change_request(
-        self,
-        repository: RepositoryRef,
-        *,
-        title: str,
-        body: str,
-        source_branch: str,
-        target_branch: str,
+        self, repository: RepositoryRef, *, title: str, body: str,
+        source_branch: str, target_branch: str,
     ) -> ChangeRequestRef:
         return ChangeRequestRef(
             repository=repository,
@@ -99,22 +87,15 @@ class FakeSCMProvider:
             state="open",
         )
 
-    async def add_comment(
-        self,
-        repository: RepositoryRef,
-        *,
-        subject_id: str,
-        body: str,
-    ) -> None:
-        return None
+    async def add_comment(self, subject: CommentSubjectRef, *, body: str) -> None:
+        assert subject.kind in {
+            CommentSubjectKind.WORK_ITEM,
+            CommentSubjectKind.CHANGE_REQUEST,
+        }
 
     async def submit_review(
-        self,
-        repository: RepositoryRef,
-        *,
-        change_id: str,
-        state: ReviewState,
-        body: str,
+        self, repository: RepositoryRef, *, change_id: str,
+        state: ReviewState, body: str,
     ) -> ReviewRef:
         return ReviewRef(
             repository=repository,
@@ -132,9 +113,7 @@ class FakeCIProvider:
         return frozenset(CICapability)
 
     async def get_run(
-        self,
-        repository: RepositoryRef,
-        run_id: str,
+        self, repository: RepositoryRef, run_id: str,
     ) -> CIRunRef:
         return CIRunRef(
             provider_id=self.provider_id,
@@ -143,6 +122,21 @@ class FakeCIProvider:
             status="completed",
             conclusion="failure",
             commit_sha="deadbeef",
+        )
+
+    async def list_runs(
+        self, repository: RepositoryRef, *, commit_sha: str | None = None,
+        ref: str | None = None, status: str | None = None, limit: int = 20,
+    ) -> tuple[CIRunRef, ...]:
+        return (
+            CIRunRef(
+                provider_id=self.provider_id,
+                run_id="run-1",
+                repository=repository,
+                status=status or "completed",
+                conclusion="failure",
+                commit_sha=commit_sha or "deadbeef",
+            ),
         )
 
     async def stream_logs(self, run: CIRunRef) -> AsyncIterator[CIJobLog]:
@@ -158,10 +152,7 @@ class FakeCIProvider:
         )
 
     async def trigger(
-        self,
-        repository: RepositoryRef,
-        *,
-        ref: str,
+        self, repository: RepositoryRef, *, ref: str,
         workflow_id: str | None = None,
         inputs: Mapping[str, Any] | None = None,
     ) -> CIRunRef:
@@ -176,13 +167,7 @@ class FakeCIProvider:
         return None
 
     async def list_artifacts(self, run: CIRunRef) -> tuple[CIArtifactRef, ...]:
-        return (
-            CIArtifactRef(
-                run=run,
-                artifact_id="artifact-1",
-                name="logs",
-            ),
-        )
+        return (CIArtifactRef(run=run, artifact_id="artifact-1", name="logs"),)
 
 
 async def main() -> None:
@@ -204,6 +189,14 @@ async def main() -> None:
         source_branch="fix/demo",
         target_branch="main",
     )
+    await scm.add_comment(
+        CommentSubjectRef(
+            repository=repo,
+            subject_id=change.change_id,
+            kind=CommentSubjectKind.CHANGE_REQUEST,
+        ),
+        body="Delivery update",
+    )
     review = await scm.submit_review(
         repo,
         change_id=change.change_id,
@@ -211,23 +204,24 @@ async def main() -> None:
         body="Looks good",
     )
 
-    run = await ci.get_run(repo, "run-1")
+    discovered = await ci.list_runs(repo, commit_sha="deadbeef", ref="fix/demo")
+    run = discovered[0]
     logs = [log async for log in ci.stream_logs(run)]
     retry = await ci.retry_failed(run)
 
     assert event.event_id == "evt-42"
     assert review.state is ReviewState.APPROVE
+    assert run.commit_sha == "deadbeef"
     assert logs[0].content == "failed"
     assert retry.status == "queued"
     assert CICapability.LOGS in await ci.capabilities()
 
-    # Capability discovery lets a provider declare partial CI support
-    # (e.g. SCM is supported but native build-log retrieval is unavailable).
     partial_ci = frozenset({CICapability.RUNS})
     assert CICapability.LOGS not in partial_ci
 
     print("SCM_PROVIDER_CONTRACT_OK")
     print("CI_PROVIDER_CONTRACT_OK")
+    print("CI_RUN_DISCOVERY_OK")
 
 
 if __name__ == "__main__":
