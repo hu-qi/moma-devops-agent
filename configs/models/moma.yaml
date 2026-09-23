@@ -8,22 +8,36 @@ bootstrap:
 routing:
   mode: capability-profile
 
+# These are capability-gated bootstrap defaults, not quality winners.
+# Final role selection must be decided by DevOpsBench quality/latency/token/cost data.
 profiles:
   fast:
     description: classification, summarization and low-risk transformations
-    model: null
+    model: deepseek-v4.1-flash
   reasoning:
     description: planning, RCA and architecture reasoning
-    model: null
+    model: GLM-5.3
   coding:
     description: code generation, refactoring and tests
-    model: null
+    model: Qwen3-32B
   review:
     description: independent code/security/quality review
-    model: null
+    model: deepseek-v4.1-flash
   judge:
     description: benchmark evaluation and candidate comparison
-    model: null
+    model: GLM-5.3
+
+capability_gate:
+  required_for_agentteam_roles:
+    - basic_chat
+    - structured_tool_calling
+  observed_eligible:
+    - GLM-5.3
+    - Qwen3-32B
+    - deepseek-v4.1-flash
+  observed_ineligible_for_tool_roles:
+    - DeepSeek-R1-0528
+    - qwen2.5-coder-32b-Instruct
 
 # When MoMA's managed routing API is live-verified, profiles may map to
 # managed route aliases/policies instead of fixed model IDs.
