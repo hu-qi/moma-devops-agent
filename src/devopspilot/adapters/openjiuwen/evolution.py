@@ -24,6 +24,51 @@ def _required_env(name: str) -> str:
     return value
 
 
+async def materialize_skill_experience_candidate(
+    candidate: EvolutionCandidate,
+    *,
+    target_skills_root: str | Path,
+) -> tuple[str, ...]:
+    """Materialize a candidate into an isolated Skill store for evaluation.
+
+    This is separate from production promotion. The caller must provide a
+    sandbox copy of the Skill root. OpenJiuwen's own EvolutionStore projection
+    logic is used so candidate evaluation sees the same Skill presentation
+    that an approved record would create.
+    """
+
+    if candidate.artifact.kind is not ArtifactKind.SKILL_EXPERIENCE:
+        raise ValueError("candidate is not a Skill Experience artifact")
+
+    payload = json.loads(candidate.artifact.content)
+    if payload.get("format") != "devopspilot.skill-experience-candidate/v1":
+        raise ValueError("unsupported Skill Experience candidate format")
+
+    skill_name = str(payload.get("skill_name", "")).strip()
+    records = payload.get("records")
+    if not skill_name or not isinstance(records, list) or not records:
+        raise ValueError("candidate must contain one Skill and non-empty records")
+
+    root = Path(target_skills_root).resolve()
+    skill_md = root / skill_name / "SKILL.md"
+    if not skill_md.is_file():
+        raise FileNotFoundError(f"sandbox Skill definition missing: {skill_md}")
+
+    from openjiuwen.agent_evolving.checkpointing.evolution_store import (
+        EvolutionStore,
+    )
+    from openjiuwen.agent_evolving.checkpointing.types import EvolutionRecord
+
+    store = EvolutionStore(str(root))
+    record_ids: list[str] = []
+    for item in records:
+        record = EvolutionRecord.from_dict(item)
+        await store.append_record(skill_name, record)
+        record_ids.append(record.id)
+
+    return tuple(record_ids)
+
+
 class OpenJiuwenSkillEvolutionProvider:
     """Generate staged Skill Experience candidates without production writes.
 
