@@ -1,0 +1,72 @@
+name: Skill Evolution DevOpsBench A-B
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "skills/build-debug/**"
+      - "src/devopspilot/contracts/evolution.py"
+      - "src/devopspilot/evolution/**"
+      - "src/devopspilot/adapters/openjiuwen/**"
+      - "src/devopspilot/routing/profiler.py"
+      - "benchmarks/cases/ci-python-wrong-working-directory/**"
+      - "experiments/skill-evolution-devopsbench-ab/**"
+      - ".github/workflows/skill-evolution-devopsbench-ab.yml"
+
+concurrency:
+  group: skill-evolution-devopsbench-ab-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+  MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+  MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
+  MOMA_EVOLUTION_MODEL: ${{ vars.MOMA_EVOLUTION_MODEL || vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+
+jobs:
+  ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate MoMA configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$MOMA_API_BASE"
+          test -n "$MOMA_MODEL"
+          test -n "$MOMA_API_KEY"
+
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Run baseline versus candidate
+        env:
+          PYTHONPATH: src
+        run: python experiments/skill-evolution-devopsbench-ab/main.py
+
+      - name: Verify production Skill is untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e skills/build-debug/evolutions.json
+          git diff --exit-code -- skills/build-debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-debug-evolution-ablation
+          path: artifacts/build-debug-evolution-ablation.json
+          if-no-files-found: error
