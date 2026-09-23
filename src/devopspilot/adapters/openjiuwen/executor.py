@@ -146,16 +146,10 @@ class OpenJiuwenTaskExecutor:
 
         test_command = workspace.metadata.get("test_command", "").strip()
         test_summary = ""
-        if test_command:
-            code, out, err = await asyncio.create_subprocess_shell(
-                test_command,
-                cwd=str(workspace.path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            ).communicate()  # type: ignore[assignment]
 
-        # Use exec form for product validation below; shell is only needed for
-        # benchmark/user-provided composite commands and never receives secrets.
+        # Shell execution is confined to the workspace and is only used for
+        # benchmark/repository-owned verification commands. Secrets are never
+        # interpolated into this command.
         if test_command:
             proc = await asyncio.create_subprocess_shell(
                 test_command,
@@ -174,7 +168,7 @@ class OpenJiuwenTaskExecutor:
                 )
 
         await self._validate_paths(workspace)
-        diff = (await _run("git", "diff", "--", ".", cwd=workspace.path))[1]
+        diff = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
         if not diff.strip():
             raise RuntimeError("AgentTeam completed without producing a code change")
 
