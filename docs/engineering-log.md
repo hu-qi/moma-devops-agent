@@ -173,3 +173,150 @@ DeliveryTask
 ~~~
 
 Only after this local deterministic path is green will remote branch publication be connected to GitHub/CNB.
+
+
+## 2026-09-23 — Product Core Milestone
+
+### OpenJiuwen TaskExecutor × DevOpsBench — LIVE VERIFIED
+
+Workflow:
+
+```text
+OpenJiuwen Task Executor
+run: 35881772137
+commit: 9127f775f3d7f3c1aa8584e6db10565c5d5329b8
+result: SUCCESS
+```
+
+This is the first live product-level coding execution, not merely a runtime
+surface probe.
+
+Observed evidence:
+
+```text
+OPENJIUWEN_TASK_EXECUTOR_OK
+AGENTTEAM_CODE_CHANGE_OK
+AGENTTEAM_REVIEW_GATE_OK
+LOCAL_COMMIT_OK
+DEVOPSBENCH_ORACLE_OK
+```
+
+Final validated local commit:
+
+```text
+630ba43ea1be3a5c6bc4006a0d5d9f985941f627
+```
+
+DevOpsBench reported:
+
+```text
+task_success=true
+test_pass=true
+```
+
+The live AgentTeam:
+- read the real deterministic fixture;
+- Coding Agent changed only `range_sum.py`;
+- changed `sum(range(n))` to `sum(range(n + 1))`;
+- Coding Agent independently ran `python test_range_sum.py` with exit code 0;
+- Review Agent independently inspected the diff;
+- Review Agent independently ran the same test with exit code 0;
+- Review Agent returned PASS;
+- DevOpsPilot independently enforced the path allow-list/forbidden-list;
+- runtime-only Python cache artifacts were removed without weakening source guards;
+- DevOpsPilot created the local Git commit after AgentTeam completion;
+- DevOpsBench oracle independently verified the committed candidate.
+
+Therefore:
+
+> MoMA + OpenJiuwen Dynamic AgentTeam + real code modification + independent
+> review + deterministic evaluation is now live-proven.
+
+### Product Core Added
+
+The following product-owned layers are now implemented and CI-verified:
+
+- provider-neutral `DeliveryLoop`;
+- durable `DeliveryOrchestrator`;
+- SQLite restart-safe delivery state with optimistic locking;
+- Git worktree execution isolation;
+- exact-commit `GitChangePublisher`;
+- canonical delivery Trajectory;
+- Trajectory → DevOpsBench runtime metrics;
+- TaskProfile → capability routing;
+- AgentTeam role-level routing plan;
+- OpenJiuwen model-router mapping;
+- GitHub reference SCM/CI adapters;
+- CNB reference SCM/CI adapters.
+
+### DevOpsBench Runtime Evidence
+
+DevOpsBench now accepts an optional `--metrics-file`.
+
+Observed runtime metrics can include:
+- duration_ms
+- model_calls
+- tool_calls
+- input_tokens
+- output_tokens
+- estimated_cost
+- human_interventions
+- artifacts
+
+These metrics cannot override benchmark success. Success remains determined by
+the independent oracle.
+
+### MoMA Model Catalog — LIVE VERIFIED
+
+Workflow:
+
+```text
+MoMA Model Catalog
+run: 35883266698
+result: SUCCESS
+model_count: 68
+```
+
+Examples from the actual configured MoMA endpoint include:
+- DeepSeek-R1-0528
+- DeepSeek-V3.2
+- DeepSeek-V4-Flash
+- deepseek-v4.1-flash
+- qwen2.5-coder-32b-Instruct
+- Qwen3-32B
+- Qwen3-235B-A22B
+- Qwen3.5-35B-A3B
+- GLM-5.3
+- glm-5.3-flash
+- MiniMax-M2.5
+- JIUTIAN model families
+- vision, embedding and rerank models
+
+The catalog is now discovered from the live OpenAI-compatible `/models`
+endpoint instead of inferred from marketing material.
+
+### Multi-Model Runtime
+
+The Executor now maps:
+
+```text
+DeliveryTask
+   ↓
+DeliveryTaskProfiler
+   ↓
+AgentTeamModelPlanner
+   ↓
+MoMAProvider
+   ↓
+REASONING / CODING / REVIEW RoutingDecision
+   ↓
+OpenJiuwen model_router
+   ↓
+Leader / Coding Agent / Review Agent
+```
+
+A live model-router AgentTeam run is currently the next gate.
+
+A separate MoMA Role Model Gate is testing candidate models for the minimum
+AgentTeam requirement: basic completion + OpenAI-compatible function calling.
+Only models that pass the gate may become role defaults.
