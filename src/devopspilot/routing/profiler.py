@@ -10,6 +10,9 @@ from devopspilot.contracts.model_intelligence import (
 )
 
 
+_TASK_TYPES = {task_type.value: task_type for task_type in TaskType}
+
+
 _RISK = {
     "low": RiskLevel.LOW,
     "medium": RiskLevel.MEDIUM,
@@ -39,13 +42,18 @@ class DeliveryTaskProfiler:
             default=len(task.work_item.title) + len(task.work_item.body),
         )
 
+        task_type = self._task_type(
+            metadata.get("task_type"),
+            labels,
+        )
+
         return TaskProfile(
             task_id=(
                 f"{task.repository.provider_id}:"
                 f"{task.repository.repository_id}:"
                 f"{task.work_item.item_id}"
             ),
-            task_type=TaskType.CODING,
+            task_type=task_type,
             complexity=complexity,
             risk_level=risk,
             context_size=context_size,
@@ -76,6 +84,28 @@ class DeliveryTaskProfiler:
                 "target_branch": task.target_branch,
             },
         )
+
+    @staticmethod
+    def _task_type(value: str | None, labels: set[str]) -> TaskType:
+        if value:
+            normalized = value.strip().lower()
+            if normalized not in _TASK_TYPES:
+                raise ValueError(f"unsupported task_type: {value}")
+            return _TASK_TYPES[normalized]
+
+        if labels & {"ci", "ci-debug", "build", "build-debug"}:
+            return TaskType.CI_DEBUG
+        if labels & {"review", "code-review"}:
+            return TaskType.CODE_REVIEW
+        if labels & {"test", "test-generation"}:
+            return TaskType.TEST_GENERATION
+        if labels & {"dependency", "dependency-debug"}:
+            return TaskType.DEPENDENCY_DEBUG
+        if labels & {"incident", "rca", "incident-rca"}:
+            return TaskType.INCIDENT_RCA
+        if labels & {"release", "release-risk"}:
+            return TaskType.RELEASE_RISK
+        return TaskType.CODING
 
     @staticmethod
     def _risk_from_labels(labels: set[str]) -> RiskLevel:
