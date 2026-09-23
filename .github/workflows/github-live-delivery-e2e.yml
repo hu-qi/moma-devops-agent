@@ -1,0 +1,61 @@
+name: GitHub Live Delivery E2E
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: github-live-e2e-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+  MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+  MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
+  DEVOPSPILOT_E2E_ISSUE: ${{ github.event.issue.number }}
+
+jobs:
+  delivery:
+    if: ${{ startsWith(github.event.issue.title, '[DevOpsPilot E2E]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate runtime configuration
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "$MOMA_API_BASE"
+          test -n "$MOMA_MODEL"
+          test -n "$MOMA_API_KEY"
+          test -n "$GITHUB_TOKEN"
+
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Run live Issue to PR to CI delivery
+        env:
+          PYTHONPATH: src
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python experiments/github-live-delivery-e2e/main.py
