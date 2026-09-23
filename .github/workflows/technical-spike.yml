@@ -1,6 +1,10 @@
 name: Technical Spike
 
 on:
+  push:
+    paths:
+      - ".github/workflows/technical-spike.yml"
+      - "experiments/openjiuwen-runtime-smoke/**"
   workflow_dispatch:
     inputs:
       run_moma_live:
@@ -52,7 +56,7 @@ jobs:
 
   moma-live:
     name: MoMA live compatibility
-    if: ${{ inputs.run_moma_live }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_moma_live }}
     needs: openjiuwen-runtime-surface
     runs-on: ubuntu-latest
     timeout-minutes: 20
