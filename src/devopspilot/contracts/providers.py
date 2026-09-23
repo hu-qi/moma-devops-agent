@@ -36,6 +36,11 @@ class ReviewState(StrEnum):
     REQUEST_CHANGES = "request-changes"
 
 
+class CommentSubjectKind(StrEnum):
+    WORK_ITEM = "work-item"
+    CHANGE_REQUEST = "change-request"
+
+
 @dataclass(frozen=True, slots=True)
 class RepositoryRef:
     provider_id: str
@@ -65,6 +70,13 @@ class ChangeRequestRef:
     target_branch: str
     state: str
     web_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CommentSubjectRef:
+    repository: RepositoryRef
+    subject_id: str
+    kind: CommentSubjectKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,9 +193,8 @@ class SCMProvider(Protocol):
 
     async def add_comment(
         self,
-        repository: RepositoryRef,
+        subject: CommentSubjectRef,
         *,
-        subject_id: str,
         body: str,
     ) -> None:
         ...
@@ -213,6 +224,22 @@ class CIProvider(Protocol):
         repository: RepositoryRef,
         run_id: str,
     ) -> CIRunRef:
+        ...
+
+    async def list_runs(
+        self,
+        repository: RepositoryRef,
+        *,
+        commit_sha: str | None = None,
+        ref: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+    ) -> tuple[CIRunRef, ...]:
+        """Discover runs created automatically by SCM/CI events.
+
+        At least one stable selector (commit_sha or ref) should normally be
+        supplied by orchestration when correlating a PR/MR to its CI execution.
+        """
         ...
 
     async def stream_logs(self, run: CIRunRef) -> AsyncIterator[CIJobLog]:
