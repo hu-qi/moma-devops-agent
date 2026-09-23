@@ -55,6 +55,7 @@ class BenchmarkWorkspaceProvider:
                 "allowed_paths": "range_sum.py",
                 "forbidden_paths": "test_range_sum.py",
                 "test_command": "python test_range_sum.py",
+                "max_changed_files": "1",
             },
         )
 
@@ -154,6 +155,10 @@ async def main() -> None:
         "task_success": report["task_success"],
         "test_pass": report["test_pass"],
         "workspace": str(workspace),
+        "leader_model": result.metadata.get("leader_model"),
+        "coding_model": result.metadata.get("coding_model"),
+        "review_model": result.metadata.get("review_model"),
+        "model_router_names": result.metadata.get("model_router_names"),
     }, ensure_ascii=False, indent=2))
 
 
