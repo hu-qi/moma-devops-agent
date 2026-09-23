@@ -105,6 +105,14 @@
       "type": "object",
       "additionalProperties": true,
       "default": {}
+    },
+    "runtime_clean_completion": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Whether the Agent/runtime terminated cleanly without degradation.",
+      "default": null
     }
   },
   "additionalProperties": false
