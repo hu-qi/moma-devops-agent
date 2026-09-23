@@ -67,6 +67,31 @@ class EvolutionOpportunity:
 
 
 @dataclass(frozen=True, slots=True)
+class TeamPatternCreationProposal:
+    proposal_id: str
+    proposal_key: str
+    reusable_guidance: str
+    evidence: tuple[str, ...]
+    source_opportunity_ids: tuple[str, ...]
+    provider_id: str
+    approval_payload: Mapping[str, Any] = field(default_factory=dict)
+    production_write: bool = False
+
+
+@runtime_checkable
+class TeamPatternCreationProvider(Protocol):
+    @property
+    def provider_id(self) -> str:
+        ...
+
+    async def propose_creation(
+        self,
+        opportunities: tuple[EvolutionOpportunity, ...],
+    ) -> TeamPatternCreationProposal:
+        ...
+
+
+@dataclass(frozen=True, slots=True)
 class EvolutionRequest:
     request_id: str
     base_artifact: ArtifactVersion
