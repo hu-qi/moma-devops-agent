@@ -1,4 +1,9 @@
-"""Capability gate for candidate MoMA AgentTeam role models."""
+"""Capability probe for candidate MoMA AgentTeam role models.
+
+By default this script reports eligibility without failing the workflow.
+Set ROLE_MODEL_GATE_STRICT=1 when validating a model that is required by the
+current DevOpsPilot role configuration.
+"""
 
 from __future__ import annotations
 
@@ -17,8 +22,11 @@ def required(name: str) -> str:
     return value
 
 
-async def main() -> None:
-    model_id = required("ROLE_MODEL_ID")
+def truthy(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def probe_model(model_id: str) -> dict[str, Any]:
     model = Model(
         model_client_config=ModelClientConfig(
             client_provider="OpenAI",
@@ -89,18 +97,33 @@ async def main() -> None:
         "tool_calls": tool_calls,
         "tool_error": tool_error,
     }
+    report["agentteam_role_eligible"] = bool(
+        report["basic_ok"] and report["tool_calling_ok"]
+    )
+    return report
+
+
+async def main() -> None:
+    model_id = required("ROLE_MODEL_ID")
+    report = await probe_model(model_id)
     print("ROLE_MODEL_REPORT=" + json.dumps(report, ensure_ascii=False))
 
-    if not report["basic_ok"] or not report["tool_calling_ok"]:
-        raise SystemExit(
-            f"Model {model_id} is not eligible for AgentTeam role execution"
-        )
+    if report["agentteam_role_eligible"]:
+        if not report["basic_exact"]:
+            print(
+                "ROLE_MODEL_NOTE=basic response contains extra model-native "
+                "reasoning/content; structured tool calling remains eligible"
+            )
+        return
 
-    if not report["basic_exact"]:
-        print(
-            "ROLE_MODEL_NOTE=basic response contains extra model-native "
-            "reasoning/content; tool calling remains eligible"
-        )
+    message = (
+        f"Model {model_id} is not eligible for tool-using AgentTeam roles "
+        "under the current OpenAI-compatible MoMA endpoint"
+    )
+    if truthy("ROLE_MODEL_GATE_STRICT"):
+        raise SystemExit(message)
+
+    print("ROLE_MODEL_INELIGIBLE=" + message)
 
 
 if __name__ == "__main__":
