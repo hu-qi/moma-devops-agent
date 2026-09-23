@@ -21,3 +21,10 @@ OpenJiuwen EvolutionStore. Production skills/build-debug is never modified.
 
 A candidate that fails the regression gate is a valid experimental result and
 is recorded as REJECTED; it does not make the workflow itself fail.
+
+
+## Experiment isolation
+
+Each A/B variant carries a unique execution_id. OpenJiuwen Team names and
+session ids include that attempt identity so baseline, candidate, retries, and
+parallel evaluations cannot inherit one another's AgentTeam context.
