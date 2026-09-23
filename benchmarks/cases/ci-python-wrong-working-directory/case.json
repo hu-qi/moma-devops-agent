@@ -1,0 +1,22 @@
+{
+  "id": "ci.github_actions.working_directory.001",
+  "category": "ci-debug",
+  "task": "Diagnose why CI cannot run the test script and repair only the workflow configuration.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [".github/workflows/ci.yml"],
+    "max_changed_files": 1
+  },
+  "oracle": {
+    "command": "python verify_ci.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 30,
+    "max_model_calls": 10,
+    "max_tool_calls": 30
+  },
+  "risk": "low"
+}
