@@ -6,6 +6,7 @@ import asyncio
 
 from devopspilot.contracts.trajectory import TrajectoryEvent, TrajectoryEventKind
 from devopspilot.trajectory import InMemoryTrajectoryRecorder
+from devopspilot.trajectory.openjiuwen_bridge import map_openjiuwen_span
 
 
 async def main() -> None:
@@ -59,6 +60,46 @@ async def main() -> None:
     else:
         raise AssertionError("non-increasing trajectory sequence must be rejected")
 
+    llm_event = map_openjiuwen_span(
+        sequence=4,
+        category="llm",
+        span_name="chat",
+        attributes={
+            "gen_ai.response.model": "Qwen3-32B",
+            "gen_ai.provider.name": "OpenAI",
+            "agentteam.member.name": "coding-agent",
+            "openjiuwen.gen_ai.response.total_latency_ms": 1234,
+        },
+        status={"code": "OK"},
+        usage={
+            "prompt_tokens": 100,
+            "completion_tokens": 25,
+            "total_tokens": 125,
+        },
+    )
+    assert llm_event is not None
+    assert llm_event.kind is TrajectoryEventKind.ROUTING
+    assert llm_event.attributes["model_id"] == "Qwen3-32B"
+    assert llm_event.attributes["input_tokens"] == 100
+
+    tool_event = map_openjiuwen_span(
+        sequence=5,
+        category="tool",
+        span_name="tool.call",
+        attributes={"agentteam.member.name": "coding-agent"},
+        status={"code": "STATUS_CODE_OK"},
+        tool_call={
+            "name": "shell",
+            "id": "call-1",
+            "input": {"command": "python test.py"},
+            "output": {"exit_code": 0},
+        },
+    )
+    assert tool_event is not None
+    assert tool_event.kind is TrajectoryEventKind.TOOL
+    assert tool_event.name == "shell"
+
+    print("OPENJIUWEN_TRAJECTORY_MAPPING_OK")
     print("TRAJECTORY_SCHEMA_OK")
     print("TRAJECTORY_USAGE_ACCOUNTING_OK")
     print("TRAJECTORY_SEQUENCE_GUARD_OK")
