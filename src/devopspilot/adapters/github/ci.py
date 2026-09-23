@@ -9,7 +9,6 @@ from devopspilot.contracts.providers import (
     CIArtifactRef,
     CICapability,
     CIJobLog,
-    CIProvider,
     CIRunRef,
     RepositoryRef,
 )
@@ -36,6 +35,31 @@ class GitHubCIProvider:
             f"/repos/{repository.full_name}/actions/runs/{run_id}",
         )
         return self._to_run(repository, data)
+
+    async def list_runs(
+        self,
+        repository: RepositoryRef,
+        *,
+        commit_sha: str | None = None,
+        ref: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+    ) -> tuple[CIRunRef, ...]:
+        data = await self._client.request_json(
+            "GET",
+            f"/repos/{repository.full_name}/actions/runs",
+            query={
+                "head_sha": commit_sha,
+                "branch": ref,
+                "status": status,
+                "per_page": max(1, min(limit, 100)),
+                "page": 1,
+            },
+        )
+        return tuple(
+            self._to_run(repository, item)
+            for item in data.get("workflow_runs", [])
+        )
 
     async def stream_logs(self, run: CIRunRef) -> AsyncIterator[CIJobLog]:
         jobs = await self._client.request_json(
@@ -85,8 +109,6 @@ class GitHubCIProvider:
             f"/repos/{repository.full_name}/actions/workflows/{workflow_id}/dispatches",
             body={"ref": ref, "inputs": dict(inputs or {})},
         )
-        # Workflow dispatch returns 204 and does not expose the created run ID.
-        # Keep a synthetic reference until the caller resolves the run by SHA/time.
         return CIRunRef(
             provider_id=self.provider_id,
             run_id=f"dispatch:{workflow_id}:{ref}",
