@@ -1,0 +1,57 @@
+name: MoMA Live Smoke
+
+on:
+  push:
+    paths:
+      - ".github/workflows/moma-live-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate MoMA configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$MOMA_API_BASE" || (echo "::error::Missing repository variable MOMA_API_BASE" && exit 1)
+          test -n "$MOMA_MODEL" || (echo "::error::Missing repository variable MOMA_MODEL" && exit 1)
+          test -n "$MOMA_API_KEY" || (echo "::error::Missing repository secret MOMA_API_KEY" && exit 1)
+          echo "MoMA configuration is present."
+
+      - name: Install OpenJiuwen 0.1.19 line
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Run MoMA × OpenJiuwen live probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python experiments/moma-openjiuwen-poc/main.py | tee artifacts/moma-live-smoke.txt
+
+      - name: Upload sanitized probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moma-live-smoke
+          path: artifacts/moma-live-smoke.txt
+          if-no-files-found: ignore
