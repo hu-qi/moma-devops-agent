@@ -23,8 +23,6 @@ class CNBCIProvider:
         self._client = client
 
     async def capabilities(self) -> frozenset[CICapability]:
-        # CNB exposes start/status/stop and stage logs. No dedicated retry API
-        # is present in the current Swagger, so RETRY is intentionally omitted.
         return frozenset({
             CICapability.RUNS, CICapability.JOBS, CICapability.LOGS,
             CICapability.TRIGGER, CICapability.CANCEL,
@@ -41,6 +39,31 @@ class CNBCIProvider:
             status="completed" if status.lower() in _TERMINAL else status,
             conclusion=conclusion,
             web_url=f"https://cnb.cool/{repository.full_name}/-/build/{run_id}",
+        )
+
+    async def list_runs(
+        self,
+        repository: RepositoryRef,
+        *,
+        commit_sha: str | None = None,
+        ref: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+    ) -> tuple[CIRunRef, ...]:
+        data = await self._client.request_json(
+            "GET",
+            f"/{CNBHTTPClient.repo_path(repository.full_name)}/-/build/logs",
+            query={
+                "sha": commit_sha,
+                "sourceRef": ref,
+                "status": status,
+                "page": 1,
+                "page_size": max(1, min(limit, 100)),
+            },
+        )
+        return tuple(
+            self._from_log_info(repository, item)
+            for item in (data or {}).get("data", [])
         )
 
     async def stream_logs(self, run: CIRunRef) -> AsyncIterator[CIJobLog]:
@@ -104,8 +127,6 @@ class CNBCIProvider:
         )
 
     async def list_artifacts(self, run: CIRunRef) -> tuple[CIArtifactRef, ...]:
-        # Artifact APIs exist elsewhere in CNB, but build-to-artifact correlation
-        # has not yet been verified; do not fabricate that mapping.
         return ()
 
     async def _status(self, repository: RepositoryRef, run_id: str) -> Mapping[str, Any]:
@@ -114,6 +135,19 @@ class CNBCIProvider:
             f"/{CNBHTTPClient.repo_path(repository.full_name)}/-/build/status/{run_id}",
         )
         return data or {}
+
+    @classmethod
+    def _from_log_info(cls, repository: RepositoryRef, data: Mapping[str, Any]) -> CIRunRef:
+        status = str(data.get("status", "unknown"))
+        return CIRunRef(
+            provider_id=cls.provider_id,
+            run_id=str(data["sn"]),
+            repository=repository,
+            status="completed" if status.lower() in _TERMINAL else status,
+            conclusion=cls._conclusion(status),
+            commit_sha=data.get("sha"),
+            web_url=data.get("buildLogUrl"),
+        )
 
     @staticmethod
     def _conclusion(status: str) -> str | None:
