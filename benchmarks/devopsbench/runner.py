@@ -194,7 +194,8 @@ def evaluate_command_oracle(
         "human_interventions": 0,
         "artifacts": [],
         "failure_reason": None if success else result["stderr"] or result["stdout"],
-        "oracle": {
+        "evidence": {
+            "oracle_type": "command-exit",
             "expected_exit_code": expected,
             **result,
         },
