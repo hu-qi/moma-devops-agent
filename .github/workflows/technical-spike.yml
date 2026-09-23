@@ -29,14 +29,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
       - name: Install OpenJiuwen
         env:
           OPENJIUWEN_INSTALL_SPEC: ${{ vars.OPENJIUWEN_INSTALL_SPEC }}
         run: |
           set -euo pipefail
-          SPEC="${OPENJIUWEN_INSTALL_SPEC:-openjiuwen}"
+          SPEC="${OPENJIUWEN_INSTALL_SPEC:-openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19}"
           echo "Installing OpenJiuwen from configured package spec."
           python -m pip install --upgrade pip
           python -m pip install "$SPEC"
