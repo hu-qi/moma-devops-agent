@@ -27,6 +27,7 @@ def main() -> None:
         "estimated_cost": 0.42,
         "human_interventions": 1,
         "artifacts": ["trajectory.json"],
+        "runtime_clean_completion": false,
     }), encoding="utf-8")
 
     metrics = runner.load_runtime_metrics(metrics_path)
@@ -59,6 +60,7 @@ def main() -> None:
     assert result["estimated_cost"] == 0.42
     assert result["human_interventions"] == 1
     assert result["artifacts"] == ["trajectory.json"]
+    assert result["runtime_clean_completion"] is False
     assert result["evidence"]["runtime_metrics_supplied"] is True
 
     bad = root / "bad.json"
