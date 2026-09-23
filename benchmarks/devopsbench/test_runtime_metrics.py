@@ -27,7 +27,7 @@ def main() -> None:
         "estimated_cost": 0.42,
         "human_interventions": 1,
         "artifacts": ["trajectory.json"],
-        "runtime_clean_completion": false,
+        "runtime_clean_completion": False,
     }), encoding="utf-8")
 
     metrics = runner.load_runtime_metrics(metrics_path)
