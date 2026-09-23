@@ -24,3 +24,5 @@ jobs:
           python-version: "3.11"
       - name: Validate benchmark fixture preconditions
         run: python benchmarks/devopsbench/runner.py validate-fixtures
+      - name: Validate observed runtime metric ingestion
+        run: python benchmarks/devopsbench/test_runtime_metrics.py
