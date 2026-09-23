@@ -1,0 +1,33 @@
+name: CNB Reference Adapter
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/adapters/cnb/**"
+      - "experiments/cnb-reference-adapter-smoke/**"
+      - ".github/workflows/cnb-reference-adapter.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/adapters/cnb/**"
+      - "experiments/cnb-reference-adapter-smoke/**"
+      - ".github/workflows/cnb-reference-adapter.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adapter-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run CNB adapter behavior smoke
+        env:
+          PYTHONPATH: src
+        run: python experiments/cnb-reference-adapter-smoke/main.py
