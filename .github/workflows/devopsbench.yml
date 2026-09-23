@@ -1,0 +1,26 @@
+name: DevOpsBench
+
+on:
+  push:
+    paths:
+      - ".github/workflows/devopsbench.yml"
+      - "benchmarks/**"
+  pull_request:
+    paths:
+      - "benchmarks/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate benchmark fixture preconditions
+        run: python benchmarks/devopsbench/runner.py validate-fixtures
