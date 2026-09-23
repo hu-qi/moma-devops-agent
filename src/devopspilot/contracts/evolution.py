@@ -10,6 +10,7 @@ from typing import Any, Mapping, Protocol, runtime_checkable
 
 class ArtifactKind(StrEnum):
     SKILL = "skill"
+    SKILL_EXPERIENCE = "skill-experience"
     PROMPT = "prompt"
     ROUTING_POLICY = "routing-policy"
     TEAM_PATTERN = "team-pattern"
@@ -36,12 +37,24 @@ class ArtifactVersion:
 
 
 @dataclass(frozen=True, slots=True)
+class EvolutionSignalEvidence:
+    signal_type: str
+    section: str
+    excerpt: str
+    source: str
+    trajectory_id: str | None = None
+    tool_name: str | None = None
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
 class EvolutionRequest:
     request_id: str
     base_artifact: ArtifactVersion
     objective: str
     source_trajectory_ids: tuple[str, ...]
     evaluation_cases: tuple[str, ...]
+    signals: tuple[EvolutionSignalEvidence, ...] = ()
     constraints: Mapping[str, Any] = field(default_factory=dict)
 
 
