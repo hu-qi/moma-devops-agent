@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devopspilot.local/schemas/evaluation-result.schema.json",
+  "title": "DevOpsBench EvaluationResult",
+  "type": "object",
+  "required": [
+    "case_id",
+    "run_id",
+    "variant",
+    "status",
+    "task_success",
+    "duration_ms"
+  ],
+  "properties": {
+    "case_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "variant": {"type": "string"},
+    "status": {
+      "type": "string",
+      "enum": ["passed", "failed", "error", "timeout", "skipped"]
+    },
+    "task_success": {"type": "boolean"},
+    "test_pass": {"type": ["boolean", "null"]},
+    "ci_pass": {"type": ["boolean", "null"]},
+    "regression_count": {"type": "integer", "minimum": 0, "default": 0},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "model_calls": {"type": "integer", "minimum": 0, "default": 0},
+    "tool_calls": {"type": "integer", "minimum": 0, "default": 0},
+    "input_tokens": {"type": "integer", "minimum": 0, "default": 0},
+    "output_tokens": {"type": "integer", "minimum": 0, "default": 0},
+    "estimated_cost": {"type": ["number", "null"], "minimum": 0},
+    "human_interventions": {"type": "integer", "minimum": 0, "default": 0},
+    "artifacts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "failure_reason": {"type": ["string", "null"], "default": null}
+  },
+  "additionalProperties": false
+}
