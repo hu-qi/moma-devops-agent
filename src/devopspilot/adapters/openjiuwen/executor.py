@@ -115,6 +115,10 @@ class OpenJiuwenTaskExecutor:
                 },
                 "max_iterations": self._max_iterations,
                 "completion_timeout": self._completion_timeout,
+                # DevOps coding agents do not consume image inputs. Explicitly
+                # disable OpenJiuwen's automatic multimodal probe so text/code
+                # models do not emit an expected HTTP 400 during startup.
+                "enable_read_image_multimodal": False,
             }
 
         spec = TeamAgentSpec.model_validate({
@@ -159,16 +163,32 @@ class OpenJiuwenTaskExecutor:
             review_model=model_routing.review_model,
         )
 
+        print(
+            "DEVOPSPILOT_PHASE=agentteam.start "
+            f"leader={model_routing.leader_model} "
+            f"coding={model_routing.coding_model} "
+            f"review={model_routing.review_model}"
+        )
         await Runner.start()
         try:
-            async for _chunk in Runner.run_agent_team_streaming(
-                agent_team=spec,
-                inputs={"query": query},
-                session=f"delivery-{task.repository.repository_id}-{task.work_item.item_id}",
-            ):
-                pass
+            async with asyncio.timeout(self._completion_timeout):
+                async for _chunk in Runner.run_agent_team_streaming(
+                    agent_team=spec,
+                    inputs={"query": query},
+                    session=(
+                        f"delivery-{task.repository.repository_id}-"
+                        f"{task.work_item.item_id}"
+                    ),
+                ):
+                    pass
+        except TimeoutError as exc:
+            raise RuntimeError(
+                "OpenJiuwen AgentTeam exceeded delivery execution timeout "
+                f"({self._completion_timeout}s)"
+            ) from exc
         finally:
             await Runner.stop()
+        print("DEVOPSPILOT_PHASE=agentteam.complete")
 
         test_command = workspace.metadata.get("test_command", "").strip()
         test_summary = ""
@@ -177,6 +197,7 @@ class OpenJiuwenTaskExecutor:
         # benchmark/repository-owned verification commands. Secrets are never
         # interpolated into this command.
         if test_command:
+            print("DEVOPSPILOT_PHASE=verification.start")
             proc = await asyncio.create_subprocess_shell(
                 test_command,
                 cwd=str(workspace.path),
@@ -192,6 +213,7 @@ class OpenJiuwenTaskExecutor:
                 raise RuntimeError(
                     f"Independent verification failed ({proc.returncode}):\n{test_summary}"
                 )
+            print("DEVOPSPILOT_PHASE=verification.complete")
 
         await self._clean_runtime_artifacts(workspace)
         changed_paths = await self._validate_paths(workspace)
@@ -220,6 +242,7 @@ class OpenJiuwenTaskExecutor:
         commit_sha = (await _run(
             "git", "rev-parse", "HEAD", cwd=workspace.path
         ))[1].strip()
+        print(f"DEVOPSPILOT_PHASE=commit.complete sha={commit_sha}")
 
         return ExecutionResult(
             source_branch=workspace.source_branch,
