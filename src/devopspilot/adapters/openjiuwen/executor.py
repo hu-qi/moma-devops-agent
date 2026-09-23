@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import shlex
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -167,12 +168,19 @@ class OpenJiuwenTaskExecutor:
                     f"Independent verification failed ({proc.returncode}):\n{test_summary}"
                 )
 
-        await self._validate_paths(workspace)
+        await self._clean_runtime_artifacts(workspace)
+        changed_paths = await self._validate_paths(workspace)
         diff = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
         if not diff.strip():
             raise RuntimeError("AgentTeam completed without producing a code change")
 
-        await _run("git", "add", "-A", cwd=workspace.path)
+        allowed = {
+            x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
+        }
+        if allowed:
+            await _run("git", "add", "--", *sorted(allowed), cwd=workspace.path)
+        else:
+            await _run("git", "add", "-A", cwd=workspace.path)
         await _run(
             "git",
             "-c",
@@ -201,24 +209,74 @@ class OpenJiuwenTaskExecutor:
                 "workspace_path": str(workspace.path),
                 "base_commit": workspace.base_commit,
                 "review_model_requested": review_model,
+                "changed_paths": ",".join(sorted(changed_paths)),
             },
         )
 
-    async def _validate_paths(self, workspace: ExecutionWorkspace) -> None:
+    async def _clean_runtime_artifacts(
+        self,
+        workspace: ExecutionWorkspace,
+    ) -> None:
+        """Remove only untracked interpreter/test cache artifacts.
+
+        Tracked files are never ignored or deleted by this cleanup.
+        """
+        raw = (await _run(
+            "git",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            cwd=workspace.path,
+        ))[1]
+        for relative in (line.strip() for line in raw.splitlines() if line.strip()):
+            path = Path(relative)
+            parts = set(path.parts)
+            ephemeral = (
+                "__pycache__" in parts
+                or ".pytest_cache" in parts
+                or path.suffix == ".pyc"
+            )
+            if not ephemeral:
+                continue
+            target = workspace.path / path
+            if target.is_dir():
+                shutil.rmtree(target, ignore_errors=True)
+            elif target.exists():
+                target.unlink()
+
+    async def _validate_paths(
+        self,
+        workspace: ExecutionWorkspace,
+    ) -> set[str]:
         allowed = {
             x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
         }
         forbidden = {
             x for x in workspace.metadata.get("forbidden_paths", "").split(",") if x
         }
-        changed = (await _run(
-            "git", "status", "--porcelain", cwd=workspace.path
+
+        tracked = (await _run(
+            "git",
+            "diff",
+            "--name-only",
+            "HEAD",
+            "--",
+            ".",
+            cwd=workspace.path,
+        ))[1]
+        untracked = (await _run(
+            "git",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            cwd=workspace.path,
         ))[1]
         paths = {
-            line[3:].strip()
-            for line in changed.splitlines()
-            if len(line) >= 4
+            line.strip()
+            for line in (tracked + "\n" + untracked).splitlines()
+            if line.strip()
         }
+
         if forbidden & paths:
             raise RuntimeError(
                 f"AgentTeam modified forbidden paths: {sorted(forbidden & paths)}"
@@ -227,6 +285,13 @@ class OpenJiuwenTaskExecutor:
             raise RuntimeError(
                 f"AgentTeam modified paths outside allow-list: {sorted(paths - allowed)}"
             )
+
+        max_changed = workspace.metadata.get("max_changed_files", "").strip()
+        if max_changed and len(paths) > int(max_changed):
+            raise RuntimeError(
+                f"AgentTeam changed {len(paths)} files; max_changed_files={max_changed}"
+            )
+        return paths
 
     @staticmethod
     def _build_query(
