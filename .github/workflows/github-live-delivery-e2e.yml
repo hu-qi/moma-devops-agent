@@ -41,7 +41,7 @@ jobs:
       - name: Validate runtime configuration
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.DEVOPSPILOT_GITHUB_TOKEN || github.token }}
         run: |
           set -euo pipefail
           test -n "$MOMA_API_BASE"
@@ -57,5 +57,5 @@ jobs:
       - name: Run live Issue to PR to CI delivery
         env:
           PYTHONPATH: src
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.DEVOPSPILOT_GITHUB_TOKEN || github.token }}
         run: python experiments/github-live-delivery-e2e/main.py
