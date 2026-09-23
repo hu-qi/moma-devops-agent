@@ -16,6 +16,7 @@ def trajectory_runtime_metrics(
     duration_ms: int | None = None,
     estimated_cost: float | None = None,
     artifacts: tuple[str, ...] = (),
+    runtime_clean_completion: bool | None = None,
 ) -> dict[str, Any]:
     if duration_ms is not None and duration_ms < 0:
         raise ValueError("duration_ms must be >= 0")
@@ -34,6 +35,7 @@ def trajectory_runtime_metrics(
         "estimated_cost": estimated_cost,
         "human_interventions": human_interventions,
         "artifacts": list(artifacts),
+        "runtime_clean_completion": runtime_clean_completion,
     }
     if duration_ms is not None:
         result["duration_ms"] = duration_ms
