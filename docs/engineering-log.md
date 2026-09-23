@@ -408,3 +408,26 @@ PR 仅修改 e2e/fixtures/github_delivery/app.py，一行修复；test_app.py �
 GitHub Actions 内置 GITHUB_TOKEN 可 push，但当前仓库策略禁止它创建 PR；外部 GitHub control plane 使用同一 commit 完成 PR 创建。该结果进一步验证 Execution Plane 与 SCM Control Plane 的凭据应解耦。
 
 下一阶段：把真实 Delivery Trajectory 接入 RSI Candidate / DevOpsBench Evolution Gate。
+## Team Pattern Self-Evolution Proposal — STAGED
+
+两条独立且 task-correct 的 AgentTeam 轨迹均出现 agentteam_timeout：
+- df3bf8ab84422c053ad951c8e704b7f3（DevOpsBench TaskExecutor）
+- df43e104d607bd752c1d8f8d13475da5（GitHub Live E2E）
+
+DeliveryEvolutionMiner 将其归类为 TEAM_PATTERN。
+
+仓库当前不存在 Team/Swarm Skill，因此不错误调用 TeamSkillEvolutionRail；改用 OpenJiuwen TeamSkillCreateRail 的 repeated external evidence API。
+
+Team Pattern Creation Proposal run 35930008850：SUCCESS。
+
+Proposal:
+- id: team_skill_evolve_create_0a84bf96ac624bf0b30fd755417088c5
+- key: devopspilot-team-runtime-agentteam-timeout
+- evidence_count: 2
+- production_write: false
+
+SQLiteEvolutionAuditStore 已支持 immutable TeamPatternCreationProposal，run 35930115333：SUCCESS。
+
+官方 swarmskill-creator 已定位于 openJiuwen-ai/jiuwenswarm；后续作为外部 creator 依赖在沙箱生成候选，不复制进 DevOpsPilot 仓库。
+
+当前停在显式人工审批门：只有用户批准后才生成 Swarm Skill candidate；仍需 DevOpsBench + RegressionGate 后才能进入 promotion。
