@@ -1,8 +1,4 @@
-"""Transport wrapper around the official CNB OpenAPI CLI.
-
-This module intentionally contains no SCM/CI domain mapping yet. The command
-surface and response shapes must be verified before implementing providers.
-"""
+"""CNB transports: official CLI plus direct OpenAPI client."""
 
 from __future__ import annotations
 
@@ -10,7 +6,83 @@ import asyncio
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Protocol, Sequence
+from urllib.error import HTTPError
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
+
+
+class CNBAPIError(RuntimeError):
+    def __init__(self, status: int, message: str, *, path: str) -> None:
+        super().__init__(f"CNB API {status} for {path}: {message}")
+        self.status = status
+        self.path = path
+
+
+class CNBAPIClient(Protocol):
+    async def request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: Mapping[str, Any] | None = None,
+        query: Mapping[str, Any] | None = None,
+    ) -> Any:
+        ...
+
+
+@dataclass(slots=True)
+class CNBHTTPClient:
+    token: str
+    api_base: str = "https://api.cnb.cool"
+    user_agent: str = "DevOpsPilot"
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: Mapping[str, Any] | None = None,
+        query: Mapping[str, Any] | None = None,
+    ) -> bytes:
+        url = f"{self.api_base.rstrip('/')}/{path.lstrip('/')}"
+        if query:
+            clean = {k: v for k, v in query.items() if v is not None}
+            if clean:
+                url += "?" + urlencode(clean, doseq=True)
+        data = None if body is None else json.dumps(body).encode()
+        req = Request(
+            url,
+            data=data,
+            method=method.upper(),
+            headers={
+                "Accept": "application/vnd.cnb.api+json",
+                "Authorization": f"Bearer {self.token}",
+                "User-Agent": self.user_agent,
+                **({"Content-Type": "application/json"} if data is not None else {}),
+            },
+        )
+        try:
+            with urlopen(req, timeout=60) as response:  # noqa: S310
+                return response.read()
+        except HTTPError as exc:
+            raw = exc.read().decode(errors="replace")
+            raise CNBAPIError(exc.code, raw, path=path) from exc
+
+    async def request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: Mapping[str, Any] | None = None,
+        query: Mapping[str, Any] | None = None,
+    ) -> Any:
+        raw = await asyncio.to_thread(self._request, method, path, body=body, query=query)
+        return None if not raw else json.loads(raw.decode())
+
+    @staticmethod
+    def repo_path(full_name: str) -> str:
+        return quote(full_name, safe="/")
 
 
 class CNBCLIError(RuntimeError):
