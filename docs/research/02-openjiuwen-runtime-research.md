@@ -1,8 +1,7 @@
 # 02 — OpenJiuwen Runtime Research
 
 Date: 2026-09-23  
-Target: `openJiuwen-ai/agent-core` develop  
-Observed package version: **openjiuwen 0.1.18**  
+Target: `openJiuwen-ai/agent-core` / official openJiuwen distribution  
 Status: **Static API/source validation completed; live MoMA integration pending**
 
 ## 1. Executive Conclusion
@@ -23,28 +22,30 @@ Current source and documentation confirm the presence of the key primitives need
 - Persistent session / recovery
 - Permissions / HITL
 - Trajectory / observability
-- Skill and team-skill evolution
-- RSI / artifact optimization infrastructure
+- Skill and Team/Swarm Skill evolution
+- **RSI / Recursive Self-Improvement**
+- Harness optimization / artifact optimization infrastructure
 
-Recommendation remains:
+Recommendation:
 
-> Use OpenJiuwen as runtime infrastructure, but keep DevOpsPilot contracts and domain policy outside OpenJiuwen internals.
+> Use OpenJiuwen as runtime infrastructure, but keep DevOpsPilot contracts, DevOps policy, evaluation and promotion gates outside OpenJiuwen internals.
 
-## 2. Version / Stability
+## 2. Version / Distribution Baseline
 
-Current `pyproject.toml`:
-- package: `openjiuwen`
-- version: `0.1.18`
-- Python: `>=3.11,<3.14`
-- classifier: Beta
+As of 2026-09-23, the public PyPI package and the GitHub `develop` mirror that can be independently verified expose `openjiuwen 0.1.18`.
 
-The repository default branch is currently `develop`.
+A newer `0.1.19` baseline may exist in another release channel / upstream state, but it has not yet been independently verified from the public GitHub mirror or PyPI during this research pass.
 
-Implication:
-- do not track an unpinned moving branch in production;
-- first PoC may follow current develop APIs;
-- once the integration surface is validated, pin a package version or commit;
-- isolate Jiuwen-specific code in adapters.
+Therefore DevOpsPilot does **not** hard-code the version in architecture documents.
+
+For experiments:
+- use a configurable `OPENJIUWEN_INSTALL_SPEC`;
+- pin the exact package/tag/commit once the target 0.1.19 source is verified;
+- keep Jiuwen-specific integration behind adapters and contract tests.
+
+Python support in the currently verified public package:
+- Python `>=3.11,<3.14`
+- Development Status: Beta
 
 ## 3. LLM Integration
 
@@ -59,7 +60,7 @@ Implication:
 - `endpoint_profile`
 - request extensions
 
-The runtime defines an `openai_compatible` endpoint profile.
+The runtime defines a generic `openai_compatible` endpoint profile.
 
 This is important for MoMA because a generic OpenAI-compatible endpoint can be represented without implementing a custom Jiuwen model client.
 
@@ -141,57 +142,125 @@ Complex task → Leader
                 └─ CI
 ```
 
-DevOpsPilot should still own:
+DevOpsPilot still owns:
 - Complexity Gate
 - Team Pattern selection
 - DevOps role definitions
 - result verification
 - metrics comparing single vs team execution
 
-## 7. Self-Evolving / RSI
+## 7. RSI — Confirmed Capability
 
-Current source contains two relevant layers.
+RSI is no longer treated as a speculative capability.
 
-### Skill / Team Skill Evolution
-Documentation describes:
+The current public `openjiuwen.rsi` surface exports, among others:
+- `AutoHarnessOrchestrator`
+- `create_auto_harness_orchestrator`
+- `TeamEvaluator`
+- `MemberOptimizer`
+- `ProgramArtifactProvider`
+- `PaperArtifactProvider`
+- `SingleHarnessIterativeOptimizationOrchestrator`
+- `EvaluationResultAnalyzer`
+- `DataLoader`
+- optimization task / stage / dataset contracts
+
+This confirms that openJiuwen already provides a real Recursive Self-Improvement / Harness optimization substrate.
+
+### Two Evolution Layers
+
+#### A. Online Skill / Team Skill Evolution
+
+Best suited for production learning:
 - trajectory-driven signals
 - candidate experience
 - user confirmation
 - experience scoring
 - simplify / rebuild / rollback
-- Agent Skill evolution
-- Swarm/Team Skill evolution
+- member-level and team-level learning
 
-This aligns strongly with DevOpsPilot's safety boundary: evolution should propose and validate changes rather than silently rewrite production behavior.
+#### B. RSI / Harness Optimization
 
-### RSI / Harness RSI
-Current source contains:
-- `openjiuwen.rsi`
-- `harness_rsi`
+Best suited for controlled offline / benchmark-driven optimization:
 - evaluator
-- artifact RSI
-- program artifact optimization
-- auto-harness related components
+- member optimizer
+- artifact/program optimization
+- iterative harness optimization
+- auto-harness orchestration
 
-This is promising but more internal/research-oriented than the basic Skill evolution surface.
+## 8. DevOpsPilot Evolution Mapping
 
-Decision:
-- use stable Skill/Team evolution interfaces first;
-- evaluate RSI internals as an `EvolutionProvider`;
-- do not expose Jiuwen internal RSI object shapes as DevOpsPilot domain contracts.
+Recommended design:
 
-## 8. Risks
+```text
+DevOpsPilot Evolution Engine
+          │
+          ├─ Online Experience Provider
+          │      └─ OpenJiuwen Skill / Team Skill Evolution
+          │
+          └─ RSI Provider
+                 └─ OpenJiuwen RSI / Harness RSI
+```
+
+DevOpsPilot-owned contracts remain:
+- `Trajectory`
+- `EvolutionArtifact`
+- `EvaluationResult`
+- `PromotionDecision`
+- `RollbackTarget`
+
+OpenJiuwen-owned objects must stay behind the provider adapter.
+
+## 9. Evolution Policy
+
+Production path:
+
+```text
+Real Task
+  ↓
+Trajectory
+  ↓
+Online Evolution Signal
+  ↓
+Candidate Experience / Skill Change
+  ↓
+Human confirmation
+```
+
+Offline RSI path:
+
+```text
+DevOpsBench
+  ↓
+RSI Optimizer
+  ↓
+Candidate Prompt / Skill / Team Pattern / Harness Strategy
+  ↓
+Benchmark + Regression Gate
+  ↓
+Human Approval
+  ↓
+Promotion
+```
+
+This creates a safer division:
+- online evolution captures experience;
+- RSI searches for better strategies;
+- DevOpsBench decides whether a candidate is actually better.
+
+## 10. Risks
 
 ### API churn
-0.x + develop moves quickly.
+0.x APIs can change rapidly.
 
 Mitigation:
-- pin version/commit
+- configurable install spec
+- pin exact version/commit for milestone builds
 - adapter boundary
 - contract tests
 
 ### Framework overreach
-Jiuwen already provides routing/team/evolution concepts. DevOpsPilot must not become a thin configuration wrapper.
+Jiuwen already provides team/evolution concepts. DevOpsPilot must not become a thin configuration wrapper.
 
 DevOpsPilot-owned assets remain:
 - DevOps TaskProfiler
@@ -204,11 +273,11 @@ DevOpsPilot-owned assets remain:
 - Evolution policy and promotion gates
 
 ### Runtime vs product state
-Do not put organization/repository/platform business state into Jiuwen session objects by default.
+Organization/repository/platform business state should not be implicitly owned by Jiuwen session objects.
 
 Keep DevOpsPilot domain state independently modelled.
 
-## 9. Integration Verdict
+## 11. Integration Verdict
 
 | Area | Fit |
 |---|---|
@@ -218,8 +287,8 @@ Keep DevOpsPilot domain state independently modelled.
 | Dynamic AgentTeam | HIGH |
 | Session/recovery | HIGH |
 | Skill evolution | HIGH |
-| RSI experimentation | MEDIUM-HIGH, validate APIs |
+| RSI / Harness optimization | HIGH, API adapter still required |
 | Long-term API stability | MEDIUM |
 | Need to fork runtime | NO |
 
-**Decision: proceed.**
+**Decision: proceed with OpenJiuwen as the core SDK / Runtime dependency and RSI provider candidate.**
