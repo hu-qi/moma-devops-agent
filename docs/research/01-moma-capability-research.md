@@ -1,187 +1,217 @@
 # 01 — MoMA Capability Research
 
 Date: 2026-09-23  
-Status: **Round 1 / static research completed; credentialed API spike pending**
+Status: **Live API baseline verified; advanced capability spikes in progress**
 
 ## 1. Executive Conclusion
 
-MoMA 与 DevOpsPilot 的产品方向高度匹配：公开资料确认其定位为多模型聚合与调度平台，支持“一次接入、智能优选”，并强调模型聚合、智能路由、高可用与 Token 经营。
+MoMA 已经通过 DevOpsPilot 的真实 CI 验证，可作为 OpenJiuwen 0.1.19 的模型数据面。
 
-但当前公开网络上没有找到足够完整、可权威核验的 MoMA 开发者 API Reference。因此必须严格区分：
+已实测链路：
 
-- **平台级能力已确认**
-- **API 级能力有公开线索但尚未通过官方文档/实测确认**
-- **DevOpsPilot 必须 live spike 验证的能力**
+```text
+MoMA OpenAI-compatible endpoint
+        ↓
+OpenJiuwen Model.invoke
+        ↓
+DeepAgent.invoke
+        ↓
+successful response
+```
+
+当前 bootstrap 模型：
+- configured id: `deepseek-v4-flash-0731`
+- provider response model: `deepseek-v4-flash`
+
+`MOMA_MODEL` 仅作为 bootstrap/default model，不代表最终多模型路由设计。
 
 ## 2. Evidence Levels
 
-### A — 官方公开信息确认
+### A — CI / live verified
 
-中国移动 2026 年半年度报告明确：
-- MoMA 为移动模型服务平台（Mixture of Models and Agents）。
-- 平台升级后强调“一次接入、智能优选、普惠可用、安全可信”。
-- 建设 MoMA 专属算力池。
-- MoMA 位于模型/算力调度体系核心。
+GitHub Actions workflow:
 
-Source:
-- China Mobile 2026 Interim Report: https://static.cninfo.com.cn/finalpage/2026-08-14/1225472195.PDF
+```text
+MoMA Live Smoke
+run: 35876800666
+result: success
+```
 
-中国移动此前公开报告还描述 MoMA 为“多模型和智能体聚合服务引擎”，面向大小模型、不同模态、工具链与智能体进行自主选择和匹配。
+已确认：
 
-Source:
-- China Mobile 2025 Interim Report: https://static.cninfo.com.cn/finalpage/2025-08-07/1224425847.PDF
+- GitHub Actions Secret/Variables 配置有效。
+- MoMA 接受 OpenAI-compatible Chat Completions 请求。
+- OpenJiuwen `ModelClientConfig(client_provider="OpenAI", endpoint_profile="openai_compatible")` 可直接调用 MoMA。
+- `Model.invoke()` 成功。
+- `DeepAgent.invoke()` 成功。
+- response usage 包含 input/output/total token。
+- response 暴露 reasoning content。
+- provider response 暴露 concrete response model。
+- 服务响应包含性能指标，例如 time-to-first-token、generation time、queue time、tokens/sec。
+- OpenJiuwen checkpoint/session 在该模型链路上正常完成。
 
-### B — 多个公开报道交叉确认
+Basic probe output：
 
-公开报道一致描述：
-- 接入 300+ 主流模型。
-- 包括九天、DeepSeek、Qwen、GLM 等。
-- 智能路由支持成本优先 / 效果优先 / 均衡优先。
-- 出现超时、限流或故障时支持自动切换。
-- 结合缓存、上下文复用等方式降低 Token 成本。
+```text
+MOMA_OPENJIUWEN_OK
+```
 
-References:
-- https://www.citmt.cn/news/202605/123173.html
-- https://finance.sina.com.cn/enterprise/central/2026-07-31/doc-inikstfm1319701.shtml
-- https://ue.aliyun.com/news/20260522
+DeepAgent output：
 
-### C — 第三方接入资料，必须实测
+```json
+{"status":"ok","runtime":"openjiuwen"}
+```
 
-第三方渠道给出了 OpenAI-compatible Chat Completions 调用方式，并出现：
-- OpenAI-compatible gateway
-- `/v1/chat/completions`
-- Bearer API Key
-- `stream`
-- 模型名带厂商前缀
+### B — 官方公开信息确认
 
-但该类页面不是 MoMA 官方开发者文档，因此 endpoint、版本、参数不可写死进 Core。
+中国移动公开材料确认 MoMA 是移动模型服务平台（Mixture of Models and Agents），强调：
+- 一次接入
+- 智能优选
+- 多模型聚合
+- 模型/算力调度
+- 高可用和安全可信
 
-Reference:
-- https://qelkj.com/pc/cloud/cmcc/moma.html
+Sources:
+- China Mobile 2026 Interim Report
+- China Mobile 2025 Interim Report
+
+### C — 平台能力确认但 API 细节待验证
+
+公开资料与生态报道支持：
+- 300+ 主流模型
+- DeepSeek / Qwen / GLM 等模型池
+- 成本优先 / 效果优先 / 均衡优先等智能路由思路
+- 故障切换
+- 上下文/缓存相关 Token 优化
+
+这些不能直接等同于当前公开 API 参数已经确认。
 
 ## 3. Capability Matrix
 
 | Capability | Status | Evidence / Action |
 |---|---|---|
-| Multi-model aggregation | CONFIRMED | Official/public reports |
-| DeepSeek / Qwen / GLM availability | CONFIRMED at platform level | Public ecosystem reports |
-| Intelligent model routing | CONFIRMED at platform level | Official/public reports |
-| Cost/effect/balanced routing policy | HIGH CONFIDENCE | Multiple public reports |
-| Automatic failover | HIGH CONFIDENCE | Multiple public reports |
-| OpenAI-compatible Chat Completions | PROBABLE | Third-party API example; live verify |
-| Streaming | PROBABLE | Third-party API example; live verify |
-| Usage/token accounting | EXPECTED | Must inspect live response |
-| Tool / Function Calling | UNKNOWN | Live verify |
-| Structured Output / JSON Schema | UNKNOWN | Live verify |
-| Reasoning content field | UNKNOWN | Live verify per model |
-| List-models API | UNKNOWN | Console/API verify |
-| Router API parameters | UNKNOWN | Console/API verify |
-| Selected-model metadata after routing | UNKNOWN | Live verify |
-| Route reason / confidence | UNKNOWN | Live verify |
-| Context reuse exposed to application | UNKNOWN | Platform capability != public API |
-| Prompt caching usage metrics | UNKNOWN | Live verify |
-| Rate limit headers / quota API | UNKNOWN | Live verify |
-| Embedding / rerank APIs | UNKNOWN | Console/API verify |
-| Vision / multimodal request format | PLATFORM CONFIRMED, API UNKNOWN | Live verify |
+| Multi-model aggregation | CONFIRMED platform | Official/public reports |
+| DeepSeek family availability | LIVE VERIFIED | Current bootstrap model |
+| Qwen / GLM availability | CONFIRMED platform | Model pool research; later enumerate |
+| OpenAI-compatible Chat | **LIVE VERIFIED** | MoMA Live Smoke |
+| Basic auth / endpoint | **LIVE VERIFIED** | GitHub Actions |
+| OpenJiuwen Model.invoke | **LIVE VERIFIED** | CI |
+| OpenJiuwen DeepAgent.invoke | **LIVE VERIFIED** | CI |
+| Usage/token accounting | **LIVE VERIFIED** | input/output/total/cache fields observed |
+| Reasoning content | **LIVE VERIFIED for current model** | response contains reasoning |
+| Concrete response model metadata | **LIVE VERIFIED** | configured vs response model observed |
+| Provider performance metrics | **LIVE VERIFIED** | TTFT / generation / queue / TPS observed |
+| Streaming | SPIKE RUNNING | `MoMA Capability Spikes` |
+| Tool / Function Calling | SPIKE RUNNING | `MoMA Capability Spikes` |
+| Dynamic AgentTeam on MoMA | SPIKE RUNNING | `MoMA Capability Spikes` |
+| OpenJiuwen RSI model injection | SPIKE RUNNING | `MoMA Capability Spikes` |
+| Structured Output / JSON Schema | UNKNOWN | next probe |
+| Intelligent-routing request parameters | UNKNOWN | requires official/live route probe |
+| Route reason / confidence | UNKNOWN | live verify |
+| Automatic failover metadata | UNKNOWN | live verify |
+| List-models API | UNKNOWN | console/API verify |
+| Rate limit / quota API | UNKNOWN | live verify |
+| Embedding / rerank | UNKNOWN | console/API verify |
 
-## 4. DevOpsPilot Integration Strategy
+## 4. Multimodal Finding
 
-Do not bind DevOpsPilot to one assumed MoMA routing API.
+OpenJiuwen automatically probed image capability during the DeepAgent smoke.
 
-Support two modes behind `MoMAProvider`.
+The configured `deepseek-v4-flash-0731` endpoint returned HTTP 400 indicating that this **specific model is not multimodal**.
 
-### Mode A — Managed Routing
+Interpretation:
 
-If MoMA exposes programmable intelligent-routing parameters:
+```text
+current bootstrap model != multimodal
+```
+
+Do **not** interpret this as:
+
+```text
+MoMA platform has no multimodal models
+```
+
+The Runtime correctly detected unsupported image input and continued with text capability.
+
+For normal DevOpsPilot coding tasks, explicitly disabling unnecessary image probing is preferable unless the selected capability profile requires vision.
+
+## 5. Observability Finding
+
+The live response currently exposes enough information to seed DevOpsPilot routing telemetry:
+
+```text
+configured model
+response model
+input tokens
+output tokens
+total tokens
+cache tokens
+reasoning content
+finish reason
+TTFT
+queue time
+generation time
+tokens/sec
+```
+
+These should later project into the canonical DevOpsPilot `Trajectory`, not remain only in OpenJiuwen logs.
+
+## 6. DevOpsPilot Integration Strategy
+
+Maintain two possible MoMA modes.
+
+### Direct Model Mode — verified
 
 ```text
 TaskProfile
   ↓
-DevOpsPilot RoutingPolicy
+RoutingPolicy
   ↓
-Capability requirement + route objective
+concrete model / bootstrap model
   ↓
-MoMA Smart Router
-  ↓
-Selected model
+MoMA OpenAI-compatible endpoint
 ```
 
-DevOpsPilot controls:
-- task classification
-- required capability
-- risk
-- cost/latency preference
+This path is now technically proven.
 
-MoMA controls:
-- concrete model selection
-- failover
-- infrastructure routing
-
-### Mode B — Direct Model
-
-If MoMA intelligent routing is not exposed through public API:
+### Managed Routing Mode — not yet API-verified
 
 ```text
 TaskProfile
   ↓
-DevOpsPilot RoutingPolicy
+capability + route objective
   ↓
-Model alias / concrete model
+MoMA smart routing
   ↓
-MoMA unified model endpoint
+concrete model
 ```
 
-The product remains valid. MoMA is still the default MaaS model pool; our RoutingPolicy owns model selection.
+Do not freeze parameter names until a real route request is verified.
 
-## 5. Required Live Spikes
-
-### M1 — Basic Chat
-Verify:
-- base URL
-- auth
-- model ID
-- response shape
-- usage
+## 7. Next Live Spikes
 
 ### M2 — Streaming
-Verify:
-- SSE/chunk format
-- first-token latency
-- finish_reason
-- usage placement
+Validate chunking, finish reason and usage placement.
 
 ### M3 — Tool Calling
-Verify:
-- OpenAI tools schema compatibility
-- tool_calls output shape
-- parallel tool calls
-- streaming tool calls
+Validate OpenAI tools schema and `tool_calls` parsing.
 
-### M4 — Structured Output
-Verify:
-- JSON mode
-- JSON Schema if available
-- invalid output behavior
+### M4 — Dynamic AgentTeam
+Validate Leader → dynamically spawned Coding/Review members using MoMA.
 
-### M5 — Intelligent Routing
-Verify:
-- how route mode is selected
-- route strategy values
-- whether chosen model is returned
-- failover metadata
-- route observability
+### M5 — RSI Runtime Injection
+Validate a MoMA-backed Model can be injected into OpenJiuwen RSI orchestration.
 
-### M6 — Reasoning/Coding Models
-At least test:
-- one fast model
-- one reasoning model
-- one coding-capable model
-- one reviewer/judge candidate
+### M6 — Structured Output
+Validate JSON mode / JSON Schema if supported.
 
-## 6. Decision
+### M7 — Managed Routing
+Validate the actual MoMA smart-routing API and returned routing metadata.
 
-**Proceed with MoMA as the competition-default MaaS Provider.**
+## 8. Decision
 
-Do not freeze exact endpoint or router parameter names until credentialed API verification completes.
+**MoMA is now a technically verified default MaaS Provider for DevOpsPilot's basic model/DeepAgent path.**
 
-The DevOpsPilot `MaaSProvider` abstraction remains mandatory.
+The next risk is no longer “can MoMA connect to OpenJiuwen”; it is:
+
+> which advanced capabilities can be relied on for autonomous DevOps execution, and which belong in DevOpsPilot's own control plane?
