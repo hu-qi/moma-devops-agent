@@ -1,4 +1,4 @@
-name: MoMA Role Model Gate
+name: MoMA Role Model Matrix
 
 on:
   push:
@@ -11,7 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  capability:
+  candidate-matrix:
+    name: candidate (${{ matrix.model }})
     strategy:
       fail-fast: false
       matrix:
@@ -37,5 +38,38 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
-      - name: Gate role model
+      - name: Probe candidate model
+        run: python experiments/moma-role-model-gate/main.py
+
+  required-role-models:
+    name: required AgentTeam role models
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+      - name: Validate leader model
+        env:
+          ROLE_MODEL_ID: GLM-5.3
+          ROLE_MODEL_GATE_STRICT: "1"
+        run: python experiments/moma-role-model-gate/main.py
+      - name: Validate coding model
+        env:
+          ROLE_MODEL_ID: Qwen3-32B
+          ROLE_MODEL_GATE_STRICT: "1"
+        run: python experiments/moma-role-model-gate/main.py
+      - name: Validate review model
+        env:
+          ROLE_MODEL_ID: deepseek-v4.1-flash
+          ROLE_MODEL_GATE_STRICT: "1"
         run: python experiments/moma-role-model-gate/main.py
