@@ -123,7 +123,13 @@ async def main() -> None:
     )
     assert bad.gate_passed is False
     assert "ci.python.dependency_resolution.001:task-success" in bad.regressions
+    rejected = engine.await_human_approval(
+        candidate=candidate,
+        evidence=bad,
+    )
+    assert rejected.state is ApprovalState.REJECTED
 
+    print("EVOLUTION_FAILED_GATE_REJECTED_OK")
     print("EVOLUTION_CONTRACT_OK")
     print("EVOLUTION_CANDIDATE_VERSIONING_OK")
     print("DEVOPSBENCH_REGRESSION_GATE_OK")
