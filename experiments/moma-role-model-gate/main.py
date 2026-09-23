@@ -77,9 +77,12 @@ async def main() -> None:
         tool_calls = []
         tool_error = f"{type(exc).__name__}: {exc}"
 
+    marker = "ROLE_MODEL_BASIC_OK"
     report: dict[str, Any] = {
         "model": model_id,
-        "basic_ok": basic_text == "ROLE_MODEL_BASIC_OK",
+        "basic_ok": marker in basic_text,
+        "basic_exact": basic_text == marker,
+        "basic_contains_think_tag": "<think>" in basic_text.lower(),
         "basic_text": basic_text[:200],
         "tool_calling_ok": tool_ok,
         "finish_reason": finish_reason,
@@ -91,6 +94,12 @@ async def main() -> None:
     if not report["basic_ok"] or not report["tool_calling_ok"]:
         raise SystemExit(
             f"Model {model_id} is not eligible for AgentTeam role execution"
+        )
+
+    if not report["basic_exact"]:
+        print(
+            "ROLE_MODEL_NOTE=basic response contains extra model-native "
+            "reasoning/content; tool calling remains eligible"
         )
 
 
