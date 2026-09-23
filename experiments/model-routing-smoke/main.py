@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from devopspilot.adapters.moma import MoMAProvider, MoMARoute
+from devopspilot.adapters.openjiuwen.model_router import build_team_model_routing
 from devopspilot.contracts.model_intelligence import (
     ModelCapability,
     RiskLevel,
@@ -101,9 +102,37 @@ async def main() -> None:
     assert team_plan.review.capability is ModelCapability.REVIEW
     assert team_plan.review.model_id == "review-model"
 
+    runtime_routing = build_team_model_routing(
+        team_plan,
+        api_base="https://moma.example/v1",
+        api_key="runtime-secret-only",
+    )
+    assert runtime_routing.model_router["model_names"] == [
+        "reasoning-model",
+        "coding-model",
+        "review-model",
+    ]
+    assert runtime_routing.leader_model == "reasoning-model"
+    assert runtime_routing.coding_model == "coding-model"
+    assert runtime_routing.review_model == "review-model"
+
+    fallback_plan = await AgentTeamModelPlanner(fallback).plan(TaskProfile(
+        task_id="delivery-fallback",
+        task_type=TaskType.CODING,
+        complexity=2,
+        risk_level=RiskLevel.LOW,
+    ))
+    deduped = build_team_model_routing(
+        fallback_plan,
+        api_base="https://moma.example/v1",
+        api_key="runtime-secret-only",
+    )
+    assert deduped.model_router["model_names"] == ["bootstrap-model"]
+
     health = await provider.health()
     assert health["credentials_exposed"] is False
 
+    print("OPENJIUWEN_MODEL_ROUTER_MAPPING_OK")
     print("AGENTTEAM_ROLE_ROUTING_OK")
     print("MODEL_CAPABILITY_POLICY_OK")
     print("MOMA_DIRECT_ROUTING_OK")
