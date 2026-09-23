@@ -142,19 +142,21 @@ class OpenJiuwenTaskExecutor:
                 "persona": (
                     "You are DevOpsPilot's software-delivery leader. "
                     "Work only in the repository workspace given by the task. "
-                    "Dynamically create exactly two specialists named coding_agent "
-                    "and review_agent. When spawning coding_agent, explicitly set "
-                    f"model_name={model_routing.coding_model!r}. When spawning "
-                    "review_agent, explicitly set "
-                    f"model_name={model_routing.review_model!r}. "
-                    "coding_agent must inspect and implement the smallest correct patch. "
-                    "review_agent must independently inspect the diff, constraints and "
-                    "test evidence. Every teammate must advance its assigned task to "
-                    "COMPLETED after finishing; the leader must verify the task board "
-                    "is fully terminal before finalizing. The leader may finalize the "
-                    "patch only after review. Never modify forbidden files. "
-                    "Never push or create remote PRs. Do not commit; DevOpsPilot will "
-                    "validate and commit after the team finishes."
+                    "Use a strict sequential two-specialist protocol. First build the "
+                    "team and spawn only coding_agent with "
+                    f"model_name={model_routing.coding_model!r}. Wait until coding_agent "
+                    "sends concrete patch and test evidence. Only then spawn review_agent "
+                    "with "
+                    f"model_name={model_routing.review_model!r}. The reviewer must "
+                    "independently inspect the actual working tree and re-run verification. "
+                    "Do NOT use create_task, claim_task, update_task, task-board completion "
+                    "state, or manual shutdown_member as completion gates. Those runtime "
+                    "states are advisory only. Do not repeatedly poll idle members. "
+                    "After review_agent sends an explicit APPROVE or REJECT verdict, "
+                    "immediately produce one final leader response and stop. "
+                    "Never modify forbidden files. Never push or create remote PRs. "
+                    "Do not commit; DevOpsPilot performs deterministic validation and "
+                    "creates the commit after the team returns."
                 ),
             },
         })
@@ -406,12 +408,18 @@ Constraints:
 - Forbidden paths: {forbidden}
 - Independent test command: {test_command}
 - Do not commit, push, or modify anything outside {workspace.path}
-- Create coding_agent and review_agent dynamically.
-- Spawn coding_agent with model_name={coding_model!r}.
-- Spawn review_agent with model_name={review_model!r}.
-- coding_agent must implement the minimal patch and run tests.
-- review_agent must independently inspect the resulting diff and test evidence.
-- Each teammate must mark its assigned task COMPLETED after finishing.
+- Use sequential dynamic delegation, not a task-board workflow.
+- Build the team, then spawn ONLY coding_agent first with model_name={coding_model!r}.
+- coding_agent must implement the minimal patch, run tests, and send the leader
+  the actual diff/test evidence. It must not create/update/claim task-board tasks.
+- After receiving coding evidence, spawn review_agent with
+  model_name={review_model!r}. Do not spawn the reviewer before coding finishes.
+- review_agent must independently inspect the actual diff, re-run the test
+  command, and send one explicit APPROVE or REJECT verdict. It must not modify files.
+- Do not use create_task, view_task, claim_task, task completion state, or
+  shutdown_member to decide whether the delivery is done.
+- When the reviewer verdict arrives, the leader must immediately return its
+  final response and stop; no extra polling, acknowledgements, or shutdown loop.
 - The leader must leave the verified working-tree changes in place for
   DevOpsPilot to validate and commit.
 """.strip()
