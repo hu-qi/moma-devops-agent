@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: openjiuwen-task-executor-${{ github.ref }}
+  group: openjiuwen-task-executor-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -30,7 +30,7 @@ env:
 jobs:
   live-executor:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
