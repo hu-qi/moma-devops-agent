@@ -1,0 +1,32 @@
+provider: moma
+
+# Bootstrap/default model used only for compatibility probes and as a safe fallback.
+# It is NOT the final DevOpsPilot routing design.
+bootstrap:
+  env: MOMA_MODEL
+
+routing:
+  mode: capability-profile
+
+profiles:
+  fast:
+    description: classification, summarization and low-risk transformations
+    model: null
+  reasoning:
+    description: planning, RCA and architecture reasoning
+    model: null
+  coding:
+    description: code generation, refactoring and tests
+    model: null
+  review:
+    description: independent code/security/quality review
+    model: null
+  judge:
+    description: benchmark evaluation and candidate comparison
+    model: null
+
+# When MoMA's managed routing API is live-verified, profiles may map to
+# managed route aliases/policies instead of fixed model IDs.
+managed_routing:
+  enabled: false
+  strategy: null
