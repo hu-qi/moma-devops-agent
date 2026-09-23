@@ -1,0 +1,56 @@
+name: CNB CLI Surface
+
+on:
+  push:
+    paths:
+      - ".github/workflows/cnb-cli-surface.yml"
+      - "experiments/cnb-cli-surface/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-surface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install official CNB CLI
+        run: npm install -g @cnbcool/cnb-cli@1.16.13
+
+      - name: Capture command surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          {
+            echo "=== VERSION ==="
+            cnb --version || true
+            echo
+            echo "=== ROOT ==="
+            cnb --help
+            echo
+            echo "=== REPOS ==="
+            cnb repos --help
+            echo
+            echo "=== ISSUES ==="
+            cnb issues --help
+            echo
+            echo "=== PULLS ==="
+            cnb pulls --help
+            echo
+            echo "=== BUILD ==="
+            cnb build --help
+          } | tee artifacts/cnb-cli-surface.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cnb-cli-surface
+          path: artifacts/cnb-cli-surface.txt
+          if-no-files-found: error
