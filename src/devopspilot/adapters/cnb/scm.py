@@ -6,8 +6,8 @@ import json
 from typing import Any, Mapping
 
 from devopspilot.contracts.providers import (
-    ChangeRequestRef, RepositoryRef, ReviewRef, ReviewState,
-    SCMCapability, SCMEvent, WorkItemRef,
+    ChangeRequestRef, CommentSubjectKind, CommentSubjectRef, RepositoryRef,
+    ReviewRef, ReviewState, SCMCapability, SCMEvent, WorkItemRef,
 )
 from .client import CNBAPIClient, CNBHTTPClient
 
@@ -31,7 +31,6 @@ class CNBSCMProvider:
         self._client = client
 
     async def capabilities(self) -> frozenset[SCMCapability]:
-        # External webhooks are not advertised until a webhook API is live-verified.
         return frozenset({
             SCMCapability.ISSUES,
             SCMCapability.CHANGE_REQUESTS,
@@ -41,8 +40,6 @@ class CNBSCMProvider:
         })
 
     async def normalize_webhook(self, *, headers: Mapping[str, str], body: bytes) -> SCMEvent:
-        # CNB repository-event payload normalization is useful for polling/event bridges
-        # even though WEBHOOKS is not currently advertised as a provider capability.
         payload = json.loads(body.decode())
         repo_data = payload.get("repo") or payload.get("repository") or {}
         full_name = repo_data.get("path") or repo_data.get("full_name")
@@ -110,14 +107,15 @@ class CNBSCMProvider:
         )
         return self._to_change(repository, data)
 
-    async def add_comment(
-        self, repository: RepositoryRef, *, subject_id: str, body: str,
-    ) -> None:
-        await self._client.request_json(
-            "POST",
-            f"/{CNBHTTPClient.repo_path(repository.full_name)}/-/issues/{subject_id}/comments",
-            body={"body": body},
-        )
+    async def add_comment(self, subject: CommentSubjectRef, *, body: str) -> None:
+        repo = CNBHTTPClient.repo_path(subject.repository.full_name)
+        if subject.kind is CommentSubjectKind.WORK_ITEM:
+            path = f"/{repo}/-/issues/{subject.subject_id}/comments"
+        elif subject.kind is CommentSubjectKind.CHANGE_REQUEST:
+            path = f"/{repo}/-/pulls/{subject.subject_id}/comments"
+        else:  # defensive if enum expands
+            raise ValueError(f"Unsupported CNB comment subject kind: {subject.kind}")
+        await self._client.request_json("POST", path, body={"body": body})
 
     async def submit_review(
         self, repository: RepositoryRef, *, change_id: str,
@@ -127,8 +125,6 @@ class CNBSCMProvider:
         result = await self._client.request_json(
             "POST", path, body={"body": body, "event": _EVENT_MAP[state]}
         )
-        # Swagger documents 201 without a response schema. Resolve the canonical
-        # persisted review from the list endpoint when POST has no body.
         if not isinstance(result, dict) or "id" not in result:
             reviews = await self._client.request_json(
                 "GET", path, query={"page": 1, "page_size": 100}
