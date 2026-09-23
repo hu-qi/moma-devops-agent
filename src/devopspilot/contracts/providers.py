@@ -20,6 +20,22 @@ class SCMCapability(StrEnum):
     RELEASES = "releases"
 
 
+class CICapability(StrEnum):
+    RUNS = "runs"
+    JOBS = "jobs"
+    LOGS = "logs"
+    RETRY = "retry"
+    TRIGGER = "trigger"
+    CANCEL = "cancel"
+    ARTIFACTS = "artifacts"
+
+
+class ReviewState(StrEnum):
+    COMMENT = "comment"
+    APPROVE = "approve"
+    REQUEST_CHANGES = "request-changes"
+
+
 @dataclass(frozen=True, slots=True)
 class RepositoryRef:
     provider_id: str
@@ -52,6 +68,17 @@ class ChangeRequestRef:
 
 
 @dataclass(frozen=True, slots=True)
+class ReviewRef:
+    repository: RepositoryRef
+    change_id: str
+    review_id: str
+    state: ReviewState
+    body: str = ""
+    author_id: str | None = None
+    web_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SCMEvent:
     provider_id: str
     event_id: str
@@ -78,6 +105,14 @@ class CIJobLog:
     job_id: str
     job_name: str
     content: str
+
+
+@dataclass(frozen=True, slots=True)
+class CIArtifactRef:
+    run: CIRunRef
+    artifact_id: str
+    name: str
+    download_url: str | None = None
 
 
 @runtime_checkable
@@ -126,6 +161,13 @@ class SCMProvider(Protocol):
     ) -> WorkItemRef:
         ...
 
+    async def get_change_request(
+        self,
+        repository: RepositoryRef,
+        change_id: str,
+    ) -> ChangeRequestRef:
+        ...
+
     async def create_change_request(
         self,
         repository: RepositoryRef,
@@ -146,11 +188,24 @@ class SCMProvider(Protocol):
     ) -> None:
         ...
 
+    async def submit_review(
+        self,
+        repository: RepositoryRef,
+        *,
+        change_id: str,
+        state: ReviewState,
+        body: str,
+    ) -> ReviewRef:
+        ...
+
 
 @runtime_checkable
 class CIProvider(Protocol):
     @property
     def provider_id(self) -> str:
+        ...
+
+    async def capabilities(self) -> frozenset[CICapability]:
         ...
 
     async def get_run(
@@ -164,4 +219,20 @@ class CIProvider(Protocol):
         ...
 
     async def retry_failed(self, run: CIRunRef) -> CIRunRef:
+        ...
+
+    async def trigger(
+        self,
+        repository: RepositoryRef,
+        *,
+        ref: str,
+        workflow_id: str | None = None,
+        inputs: Mapping[str, Any] | None = None,
+    ) -> CIRunRef:
+        ...
+
+    async def cancel(self, run: CIRunRef) -> None:
+        ...
+
+    async def list_artifacts(self, run: CIRunRef) -> tuple[CIArtifactRef, ...]:
         ...
