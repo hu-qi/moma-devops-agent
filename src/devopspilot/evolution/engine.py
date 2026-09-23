@@ -56,6 +56,15 @@ class EvolutionEngine:
         candidate: EvolutionCandidate,
         evidence: EvolutionEvidence,
     ) -> PromotionDecision:
+        if not evidence.gate_passed:
+            return PromotionDecision(
+                candidate_id=candidate.candidate_id,
+                state=ApprovalState.REJECTED,
+                evidence=evidence,
+                rollback_version=candidate.base_version,
+                reason="Candidate failed the automated gate and is not promotable.",
+            )
+
         return PromotionDecision(
             candidate_id=candidate.candidate_id,
             state=ApprovalState.PENDING_HUMAN,
@@ -64,7 +73,5 @@ class EvolutionEngine:
             reason=(
                 "Candidate passed the automated gate and requires explicit "
                 "human approval before production promotion."
-                if evidence.gate_passed
-                else "Candidate failed the automated gate and is not promotable."
             ),
         )
