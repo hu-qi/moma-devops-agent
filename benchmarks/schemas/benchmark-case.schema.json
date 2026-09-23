@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devopspilot.local/schemas/benchmark-case.schema.json",
+  "title": "DevOpsBench BenchmarkCase",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "category",
+    "title",
+    "description",
+    "fixture",
+    "task",
+    "allowed_changes",
+    "forbidden_changes",
+    "test_command",
+    "expected_outcome",
+    "risk_level",
+    "timeout_seconds"
+  ],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "category": {
+      "type": "string",
+      "enum": ["coding", "code-review", "ci-debug", "test-generation", "dependency-debug", "release-risk"]
+    },
+    "title": {"type": "string"},
+    "description": {"type": "string"},
+    "fixture": {"type": "string"},
+    "task": {"type": "string"},
+    "allowed_changes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "forbidden_changes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "setup_command": {"type": ["string", "null"], "default": null},
+    "test_command": {"type": "string"},
+    "verification_command": {"type": ["string", "null"], "default": null},
+    "expected_outcome": {"type": "string"},
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "timeout_seconds": {"type": "integer", "minimum": 1},
+    "industry": {"type": ["string", "null"], "default": null},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}
