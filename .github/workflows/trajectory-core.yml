@@ -30,4 +30,6 @@ jobs:
       - name: Validate canonical trajectory
         env:
           PYTHONPATH: src
-        run: python experiments/trajectory-smoke/main.py
+        run: |
+          python experiments/trajectory-smoke/main.py
+          python experiments/trajectory-smoke/test_metrics.py
