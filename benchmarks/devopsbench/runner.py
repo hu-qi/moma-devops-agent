@@ -26,6 +26,17 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES_DIR = ROOT / "cases"
+RUNTIME_METRIC_FIELDS = {
+    "duration_ms",
+    "model_calls",
+    "tool_calls",
+    "input_tokens",
+    "output_tokens",
+    "estimated_cost",
+    "human_interventions",
+    "artifacts",
+}
+
 REQUIRED_FIELDS = {
     "id",
     "version",
@@ -109,6 +120,7 @@ def validate_precondition(case_dir: Path, case: dict[str, Any]) -> dict[str, Any
             "status": "pass" if result["exit_code"] == expected else "fail",
             "precondition_type": kind,
             "expected_exit_code": expected,
+            "runtime_metrics_supplied": bool(metrics),
             **result,
         }
 
@@ -161,12 +173,63 @@ def validate_fixtures() -> dict[str, Any]:
     }
 
 
+def load_runtime_metrics(path: Path | None) -> dict[str, Any]:
+    if path is None:
+        return {}
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError(f"runtime metrics file not found: {path}")
+
+    with path.open("r", encoding="utf-8") as f:
+        metrics = json.load(f)
+    if not isinstance(metrics, dict):
+        raise ValueError("runtime metrics must be a JSON object")
+
+    unknown = sorted(set(metrics) - RUNTIME_METRIC_FIELDS)
+    if unknown:
+        raise ValueError(
+            "unsupported runtime metric fields: " + ", ".join(unknown)
+        )
+
+    for key in (
+        "duration_ms",
+        "model_calls",
+        "tool_calls",
+        "input_tokens",
+        "output_tokens",
+        "human_interventions",
+    ):
+        if key in metrics:
+            value = metrics[key]
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"{key} must be a non-negative integer")
+
+    if "estimated_cost" in metrics:
+        value = metrics["estimated_cost"]
+        if value is not None and (
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or value < 0
+        ):
+            raise ValueError("estimated_cost must be null or a non-negative number")
+
+    if "artifacts" in metrics:
+        artifacts = metrics["artifacts"]
+        if (
+            not isinstance(artifacts, list)
+            or not all(isinstance(item, str) for item in artifacts)
+        ):
+            raise ValueError("artifacts must be an array of strings")
+
+    return metrics
+
+
 def evaluate_command_oracle(
     case: dict[str, Any],
     workspace: Path,
     *,
     variant: str,
     run_id: str,
+    runtime_metrics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     oracle = case["oracle"]
     result = run_command(
@@ -176,6 +239,7 @@ def evaluate_command_oracle(
     )
     expected = int(oracle["expected_exit_code"])
     success = result["exit_code"] == expected
+    metrics = runtime_metrics or {}
     return {
         "case_id": case["id"],
         "run_id": run_id,
@@ -185,14 +249,17 @@ def evaluate_command_oracle(
         "test_pass": success if case["category"] == "coding" else None,
         "ci_pass": success if case["category"] == "ci-debug" else None,
         "regression_count": 0,
-        "duration_ms": int(result["elapsed_seconds"] * 1000),
-        "model_calls": 0,
-        "tool_calls": 0,
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "estimated_cost": None,
-        "human_interventions": 0,
-        "artifacts": [],
+        "duration_ms": metrics.get(
+            "duration_ms",
+            int(result["elapsed_seconds"] * 1000),
+        ),
+        "model_calls": metrics.get("model_calls", 0),
+        "tool_calls": metrics.get("tool_calls", 0),
+        "input_tokens": metrics.get("input_tokens", 0),
+        "output_tokens": metrics.get("output_tokens", 0),
+        "estimated_cost": metrics.get("estimated_cost"),
+        "human_interventions": metrics.get("human_interventions", 0),
+        "artifacts": metrics.get("artifacts", []),
         "failure_reason": None if success else result["stderr"] or result["stdout"],
         "evidence": {
             "oracle_type": "command-exit",
@@ -202,7 +269,13 @@ def evaluate_command_oracle(
     }
 
 
-def evaluate_case(case_id: str, workspace: Path, variant: str, run_id: str) -> dict[str, Any]:
+def evaluate_case(
+    case_id: str,
+    workspace: Path,
+    variant: str,
+    run_id: str,
+    runtime_metrics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     match: tuple[Path, dict[str, Any]] | None = None
     for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
         case = load_case(case_dir)
@@ -223,6 +296,7 @@ def evaluate_case(case_id: str, workspace: Path, variant: str, run_id: str) -> d
             workspace.resolve(),
             variant=variant,
             run_id=run_id,
+            runtime_metrics=runtime_metrics,
         )
 
     raise NotImplementedError(
@@ -242,6 +316,15 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--workspace", required=True)
     evaluate.add_argument("--variant", default="manual")
     evaluate.add_argument("--run-id", default=None)
+    evaluate.add_argument(
+        "--metrics-file",
+        default=None,
+        help=(
+            "Optional JSON file containing observed runtime metrics such as "
+            "model/tool calls and token usage. Oracle success is still "
+            "determined independently by DevOpsBench."
+        ),
+    )
     return parser
 
 
@@ -260,6 +343,11 @@ def main() -> None:
             Path(args.workspace),
             args.variant,
             args.run_id or f"run-{uuid.uuid4().hex[:12]}",
+            load_runtime_metrics(
+                Path(args.metrics_file).resolve()
+                if args.metrics_file
+                else None
+            ),
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         raise SystemExit(0 if result["task_success"] else 1)
