@@ -34,4 +34,6 @@ jobs:
       - name: Validate provider-neutral model routing
         env:
           PYTHONPATH: src
-        run: python experiments/model-routing-smoke/main.py
+        run: |
+          python experiments/model-routing-smoke/main.py
+          python experiments/model-routing-smoke/test_profiler.py
