@@ -1,0 +1,39 @@
+name: Delivery Pipeline Integration
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/delivery.py"
+      - "src/devopspilot/contracts/execution.py"
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/adapters/git/**"
+      - "src/devopspilot/orchestration/**"
+      - "experiments/delivery-pipeline-smoke/**"
+      - ".github/workflows/delivery-pipeline-integration.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/delivery.py"
+      - "src/devopspilot/contracts/execution.py"
+      - "src/devopspilot/contracts/providers.py"
+      - "src/devopspilot/adapters/git/**"
+      - "src/devopspilot/orchestration/**"
+      - "experiments/delivery-pipeline-smoke/**"
+      - ".github/workflows/delivery-pipeline-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run full provider-neutral delivery pipeline
+        env:
+          PYTHONPATH: src
+        run: python experiments/delivery-pipeline-smoke/main.py
