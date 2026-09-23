@@ -5,7 +5,11 @@ from __future__ import annotations
 import asyncio
 
 from devopspilot.contracts.trajectory import TrajectoryEvent, TrajectoryEventKind
-from devopspilot.trajectory import InMemoryTrajectoryRecorder
+from devopspilot.trajectory import (
+    DEFAULT_OPENJIUWEN_SPAN_CATEGORIES,
+    InMemoryTrajectoryRecorder,
+    OpenJiuwenTrajectoryCapture,
+)
 from devopspilot.trajectory.openjiuwen_bridge import map_openjiuwen_span
 
 
@@ -59,6 +63,14 @@ async def main() -> None:
         pass
     else:
         raise AssertionError("non-increasing trajectory sequence must be rejected")
+
+    capture = OpenJiuwenTrajectoryCapture(
+        task_id="task-1",
+        repository="acme/demo",
+    )
+    assert "llm" in capture.categories
+    assert "tool" in DEFAULT_OPENJIUWEN_SPAN_CATEGORIES
+    assert "team" not in DEFAULT_OPENJIUWEN_SPAN_CATEGORIES
 
     llm_event = map_openjiuwen_span(
         sequence=4,
