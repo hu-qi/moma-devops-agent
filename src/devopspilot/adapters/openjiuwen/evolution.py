@@ -12,8 +12,10 @@ from devopspilot.contracts.evolution import (
     ArtifactKind,
     ArtifactVersion,
     EvolutionCandidate,
+    EvolutionOpportunity,
     EvolutionProvider,
     EvolutionRequest,
+    TeamPatternCreationProposal,
 )
 
 
@@ -269,4 +271,149 @@ class OpenJiuwenSkillEvolutionProvider:
                     "sandboxed": True,
                     "production_write": False,
                 },
+            )
+
+
+class OpenJiuwenTeamSkillCreationProvider:
+    """Stage governed Team/Swarm Skill creation from repeated team evidence.
+
+    This provider does not create a Skill body and does not write production
+    state. It uses OpenJiuwen's public TeamSkillCreateRail external-evidence
+    boundary to produce the canonical approval card for a repeated reusable
+    team pattern.
+    """
+
+    provider_id = "openjiuwen-team-skill-create"
+
+    def __init__(
+        self,
+        *,
+        skills_root: str | Path,
+        language: str = "en",
+    ) -> None:
+        self._skills_root = Path(skills_root).resolve()
+        self._language = language
+
+    async def propose_creation(
+        self,
+        opportunities: tuple[EvolutionOpportunity, ...],
+    ) -> TeamPatternCreationProposal:
+        if len(opportunities) < 2:
+            raise ValueError(
+                "Team Skill creation requires at least two repeated opportunities"
+            )
+        if any(item.target_kind is not ArtifactKind.TEAM_PATTERN for item in opportunities):
+            raise ValueError(
+                "OpenJiuwenTeamSkillCreationProvider accepts TEAM_PATTERN opportunities only"
+            )
+        if any(not item.auto_candidate_allowed for item in opportunities):
+            raise ValueError("one or more opportunities forbid automatic candidate staging")
+
+        reasons = {
+            str(signal.metadata.get("runtime_degradation_reason", "")).strip()
+            for item in opportunities
+            for signal in item.signals
+            if signal.signal_type == "runtime_degradation"
+        }
+        reasons.discard("")
+        if len(reasons) != 1:
+            raise ValueError(
+                "repeated Team Skill evidence must share one semantic degradation reason"
+            )
+        degradation_reason = next(iter(reasons))
+
+        evidence: list[str] = []
+        for item in opportunities:
+            for signal in item.signals:
+                if signal.signal_type != "runtime_degradation":
+                    continue
+                trajectory = signal.trajectory_id or "unknown-trajectory"
+                evidence.append(
+                    f"{trajectory}: {signal.excerpt.strip()}"
+                )
+        evidence = list(dict.fromkeys(evidence))
+        if len(evidence) < 2:
+            raise ValueError(
+                "Team Skill creation requires at least two distinct evidence items"
+            )
+
+        source_opportunity_ids = tuple(
+            dict.fromkeys(item.opportunity_id for item in opportunities)
+        )
+        normalized_reason = degradation_reason.lower().replace("_", "-")
+        proposal_key = f"devopspilot-team-runtime-{normalized_reason}"
+        guidance = (
+            "Create a reusable DevOps delivery Team/Swarm Skill that defines "
+            "Leader, Coding, and Review collaboration; explicit task dependency "
+            "and completion criteria; bounded member shutdown/timeout handling; "
+            "independent verification before delivery; and a deterministic "
+            "handoff from member completion to Leader finalization."
+        )
+        reason = (
+            "The same AgentTeam runtime degradation appeared in multiple "
+            "independent, task-correct deliveries: "
+            f"{degradation_reason}."
+        )
+
+        from openjiuwen.agent_evolving.trajectory import TrajectorySpanProcessor
+        from openjiuwen.harness.rails import TeamSkillCreateRail
+
+        with tempfile.TemporaryDirectory(
+            prefix="devopspilot_team_skill_create_"
+        ) as td:
+            sandbox_root = Path(td) / "skills"
+            if self._skills_root.exists():
+                shutil.copytree(self._skills_root, sandbox_root)
+            else:
+                sandbox_root.mkdir(parents=True)
+
+            rail = TeamSkillCreateRail(
+                skills_dir=str(sandbox_root),
+                trajectory_span_processor=TrajectorySpanProcessor(),
+                language=self._language,
+                auto_trigger=True,
+                min_team_members_for_create=2,
+            )
+            staged = await rail.propose_from_external_evidence(
+                proposal_key=proposal_key,
+                reusable_guidance=guidance,
+                evidence=evidence,
+                reason=reason,
+            )
+            if not staged:
+                raise RuntimeError(
+                    "OpenJiuwen rejected repeated Team Skill creation evidence"
+                )
+
+            events = await rail.drain_pending_host_events(wait=False)
+            approvals = [
+                event
+                for event in events
+                if getattr(event, "type", "") == "chat.ask_user_question"
+                and isinstance(getattr(event, "payload", None), dict)
+                and event.payload.get("request_id")
+            ]
+            if len(approvals) != 1:
+                raise RuntimeError(
+                    "Expected exactly one Team Skill creation approval event"
+                )
+            payload = dict(approvals[0].payload)
+            request_id = str(payload["request_id"])
+            if not rail.owns_external_proposal(request_id):
+                raise RuntimeError(
+                    "OpenJiuwen approval event is not owned by the creation Rail"
+                )
+
+            # Do not call resolve_external_proposal(accepted=True) here.
+            # Approval and subsequent Swarm Skill creation are separate governed
+            # stages owned by DevOpsPilot.
+            return TeamPatternCreationProposal(
+                proposal_id=request_id,
+                proposal_key=proposal_key,
+                reusable_guidance=guidance,
+                evidence=tuple(evidence),
+                source_opportunity_ids=source_opportunity_ids,
+                provider_id=self.provider_id,
+                approval_payload=payload,
+                production_write=False,
             )
