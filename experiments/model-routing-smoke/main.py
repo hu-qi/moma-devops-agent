@@ -11,7 +11,7 @@ from devopspilot.contracts.model_intelligence import (
     TaskProfile,
     TaskType,
 )
-from devopspilot.routing import DefaultCapabilityPolicy, ModelRouter
+from devopspilot.routing import AgentTeamModelPlanner, DefaultCapabilityPolicy, ModelRouter
 
 
 async def main() -> None:
@@ -85,9 +85,26 @@ async def main() -> None:
     assert fallback_decision.model_id == "bootstrap-model"
     assert fallback_decision.metadata["bootstrap_fallback"] is True
 
+    team_plan = await AgentTeamModelPlanner(provider).plan(TaskProfile(
+        task_id="delivery-1",
+        task_type=TaskType.CODING,
+        complexity=4,
+        risk_level=RiskLevel.HIGH,
+        reasoning_requirement=4,
+        coding_requirement=5,
+        review_requirement=5,
+    ))
+    assert team_plan.leader.capability is ModelCapability.REASONING
+    assert team_plan.leader.model_id == "reasoning-model"
+    assert team_plan.coding.capability is ModelCapability.CODING
+    assert team_plan.coding.model_id == "coding-model"
+    assert team_plan.review.capability is ModelCapability.REVIEW
+    assert team_plan.review.model_id == "review-model"
+
     health = await provider.health()
     assert health["credentials_exposed"] is False
 
+    print("AGENTTEAM_ROLE_ROUTING_OK")
     print("MODEL_CAPABILITY_POLICY_OK")
     print("MOMA_DIRECT_ROUTING_OK")
     print("MOMA_BOOTSTRAP_FALLBACK_OK")
