@@ -1,15 +1,31 @@
 {
   "id": "ci.github_actions.working_directory.001",
+  "version": "0.1.0",
   "category": "ci-debug",
+  "title": "GitHub Actions wrong working directory",
+  "description": "Repair a workflow that executes tests from a nonexistent backend directory instead of service.",
   "task": "Diagnose why CI cannot run the test script and repair only the workflow configuration.",
   "fixture": {
     "path": "fixture"
   },
   "constraints": {
-    "allowed_paths": [".github/workflows/ci.yml"],
-    "max_changed_files": 1
+    "allowed_paths": [
+      ".github/workflows/ci.yml"
+    ],
+    "forbidden_paths": [
+      "service/**",
+      "verify_ci.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python verify_ci.py",
+    "expected_exit_code": 1
   },
   "oracle": {
+    "type": "command-exit",
     "command": "python verify_ci.py",
     "expected_exit_code": 0
   },
@@ -18,5 +34,17 @@
     "max_model_calls": 10,
     "max_tool_calls": 30
   },
-  "risk": "low"
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "github-actions",
+    "ci",
+    "working-directory",
+    "deterministic"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for deterministic CI-debug evaluation."
+  }
 }
