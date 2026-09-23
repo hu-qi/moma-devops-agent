@@ -11,6 +11,10 @@ from pathlib import Path
 
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.execution import ExecutionWorkspace, WorkspaceProvider
+from devopspilot.contracts.providers import MaaSProvider
+from devopspilot.routing import AgentTeamModelPlanner, DeliveryTaskProfiler
+
+from .model_router import build_team_model_routing
 
 
 def _required_env(name: str) -> str:
@@ -54,10 +58,14 @@ class OpenJiuwenTaskExecutor:
         self,
         workspace_provider: WorkspaceProvider,
         *,
+        maas_provider: MaaSProvider | None = None,
+        task_profiler: DeliveryTaskProfiler | None = None,
         max_iterations: int = 32,
         completion_timeout: float = 600.0,
     ) -> None:
         self._workspace_provider = workspace_provider
+        self._maas_provider = maas_provider
+        self._task_profiler = task_profiler or DeliveryTaskProfiler()
         self._max_iterations = max_iterations
         self._completion_timeout = completion_timeout
 
@@ -77,12 +85,20 @@ class OpenJiuwenTaskExecutor:
         from openjiuwen.agent_teams import TeamAgentSpec
         from openjiuwen.core.runner import Runner
 
-        default_model = _required_env("MOMA_MODEL")
-        reasoning_model = os.getenv("MOMA_REASONING_MODEL", default_model).strip() or default_model
-        coding_model = os.getenv("MOMA_CODING_MODEL", default_model).strip() or default_model
-        review_model = os.getenv("MOMA_REVIEW_MODEL", default_model).strip() or default_model
+        from devopspilot.adapters.moma import MoMAProvider
+
+        maas_provider = self._maas_provider or MoMAProvider.from_env()
+        task_profile = self._task_profiler.profile(task)
+        model_plan = await AgentTeamModelPlanner(maas_provider).plan(task_profile)
+        model_routing = build_team_model_routing(
+            model_plan,
+            api_base=_required_env("MOMA_API_BASE"),
+            api_key=_required_env("MOMA_API_KEY"),
+            timeout=120.0,
+        )
 
         def model_spec(model_name: str) -> dict:
+            # Fallback path if model-router allocation is unavailable.
             return {
                 "model": {
                     "model_client_config": {
@@ -103,9 +119,10 @@ class OpenJiuwenTaskExecutor:
 
         spec = TeamAgentSpec.model_validate({
             "agents": {
-                "leader": model_spec(reasoning_model),
-                "teammate": model_spec(coding_model),
+                "leader": model_spec(model_routing.leader_model),
+                "teammate": model_spec(model_routing.coding_model),
             },
+            "model_router": model_routing.model_router,
             "transport": {"type": "inprocess"},
             "storage": {"type": "memory"},
             "team_name": f"devopspilot-exec-{task.work_item.item_id}",
@@ -119,20 +136,28 @@ class OpenJiuwenTaskExecutor:
                     "You are DevOpsPilot's software-delivery leader. "
                     "Work only in the repository workspace given by the task. "
                     "Dynamically create exactly two specialists named coding_agent "
-                    "and review_agent. coding_agent must inspect and implement the "
-                    "smallest correct patch. review_agent must independently inspect "
-                    "the diff, constraints and test evidence. The leader may finalize "
-                    "the patch only after review. Never modify forbidden files. "
+                    "and review_agent. When spawning coding_agent, explicitly set "
+                    f"model_name={model_routing.coding_model!r}. When spawning "
+                    "review_agent, explicitly set "
+                    f"model_name={model_routing.review_model!r}. "
+                    "coding_agent must inspect and implement the smallest correct patch. "
+                    "review_agent must independently inspect the diff, constraints and "
+                    "test evidence. Every teammate must advance its assigned task to "
+                    "COMPLETED after finishing; the leader must verify the task board "
+                    "is fully terminal before finalizing. The leader may finalize the "
+                    "patch only after review. Never modify forbidden files. "
                     "Never push or create remote PRs. Do not commit; DevOpsPilot will "
                     "validate and commit after the team finishes."
                 ),
             },
         })
 
-        # Per-member model aliases are currently selected through the runtime's
-        # teammate model slot. Preserve requested reviewer profile in metadata
-        # until TeamAgentSpec exposes per-dynamic-member model binding.
-        query = self._build_query(task, workspace, review_model)
+        query = self._build_query(
+            task,
+            workspace,
+            coding_model=model_routing.coding_model,
+            review_model=model_routing.review_model,
+        )
 
         await Runner.start()
         try:
@@ -208,7 +233,12 @@ class OpenJiuwenTaskExecutor:
             metadata={
                 "workspace_path": str(workspace.path),
                 "base_commit": workspace.base_commit,
-                "review_model_requested": review_model,
+                "leader_model": model_routing.leader_model,
+                "coding_model": model_routing.coding_model,
+                "review_model": model_routing.review_model,
+                "model_router_names": ",".join(
+                    model_routing.model_router["model_names"]
+                ),
                 "changed_paths": ",".join(sorted(changed_paths)),
             },
         )
@@ -297,6 +327,8 @@ class OpenJiuwenTaskExecutor:
     def _build_query(
         task: DeliveryTask,
         workspace: ExecutionWorkspace,
+        *,
+        coding_model: str,
         review_model: str,
     ) -> str:
         allowed = workspace.metadata.get("allowed_paths", "(not specified)")
@@ -317,9 +349,11 @@ Constraints:
 - Independent test command: {test_command}
 - Do not commit, push, or modify anything outside {workspace.path}
 - Create coding_agent and review_agent dynamically.
+- Spawn coding_agent with model_name={coding_model!r}.
+- Spawn review_agent with model_name={review_model!r}.
 - coding_agent must implement the minimal patch and run tests.
 - review_agent must independently inspect the resulting diff and test evidence.
-- Requested review model profile: {review_model}
+- Each teammate must mark its assigned task COMPLETED after finishing.
 - The leader must leave the verified working-tree changes in place for
   DevOpsPilot to validate and commit.
 """.strip()
