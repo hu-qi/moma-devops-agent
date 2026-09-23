@@ -63,6 +63,9 @@ async def materialize_skill_experience_candidate(
     record_ids: list[str] = []
     for item in records:
         record = EvolutionRecord.from_dict(item)
+        # Evaluation sandbox represents the hypothetical approved candidate.
+        # The production approval path is still not invoked.
+        record.applied = True
         await store.append_record(skill_name, record)
         record_ids.append(record.id)
 
