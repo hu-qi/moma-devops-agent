@@ -102,7 +102,7 @@ async def main() -> None:
     executor = OpenJiuwenTaskExecutor(
         provider,
         max_iterations=24,
-        completion_timeout=480.0,
+        completion_timeout=180.0,
     )
 
     repository = RepositoryRef(
@@ -136,6 +136,7 @@ async def main() -> None:
     assert int(result.metadata.get("model_calls", "0")) > 0
     assert int(result.metadata.get("tool_calls", "0")) > 0
     assert int(result.metadata.get("input_tokens", "0")) > 0
+    assert result.metadata.get("runtime_degraded") in {"true", "false"}
 
     changed = run(
         "git", "diff", "--name-only", "HEAD^", "HEAD", cwd=workspace
@@ -172,6 +173,8 @@ async def main() -> None:
         "input_tokens": result.metadata.get("input_tokens"),
         "output_tokens": result.metadata.get("output_tokens"),
         "capture_issues": result.metadata.get("capture_issues"),
+        "runtime_degraded": result.metadata.get("runtime_degraded"),
+        "runtime_degradation_reason": result.metadata.get("runtime_degradation_reason"),
     }, ensure_ascii=False, indent=2))
 
 
