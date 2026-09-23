@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from devopspilot.adapters.git import GitChangePublisher
+from devopspilot.adapters.git import GitChangePublisher, GitWorktreeWorkspaceProvider
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
 
@@ -68,6 +68,32 @@ async def main() -> None:
     )
     assert remote_head == commit
 
+    # Validate isolated worktree creation/cleanup as the production execution
+    # workspace primitive.
+    base_repo = root / "base"
+    git("init", str(base_repo))
+    git("config", "user.name", "DevOpsPilot", cwd=base_repo)
+    git("config", "user.email", "devopspilot@local", cwd=base_repo)
+    (base_repo / "base.txt").write_text("base\n", encoding="utf-8")
+    git("add", "base.txt", cwd=base_repo)
+    git("commit", "-m", "base", cwd=base_repo)
+    git("branch", "-M", "main", cwd=base_repo)
+
+    worktree_task = DeliveryTask(
+        repository=repository,
+        work_item=WorkItemRef(repository, "issue-7", "Worktree"),
+        target_branch="main",
+        metadata={"allowed_paths": "base.txt"},
+    )
+    worktrees = GitWorktreeWorkspaceProvider(base_repo)
+    lease = await worktrees.prepare(worktree_task)
+    assert lease.path.exists()
+    assert lease.source_branch == "devopspilot/issue-7"
+    assert git("branch", "--show-current", cwd=lease.path) == lease.source_branch
+    await worktrees.cleanup(lease)
+    assert not lease.path.exists()
+
+    print("GIT_WORKTREE_ISOLATION_OK")
     print("GIT_PUBLISHER_OK")
     print("PUBLISHED_COMMIT_IDENTITY_OK")
     print("DIRTY_WORKTREE_GUARD_AVAILABLE")
