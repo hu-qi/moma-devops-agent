@@ -35,6 +35,7 @@ RUNTIME_METRIC_FIELDS = {
     "estimated_cost",
     "human_interventions",
     "artifacts",
+    "runtime_clean_completion",
 }
 
 REQUIRED_FIELDS = {
@@ -211,6 +212,11 @@ def load_runtime_metrics(path: Path | None) -> dict[str, Any]:
         ):
             raise ValueError("estimated_cost must be null or a non-negative number")
 
+    if "runtime_clean_completion" in metrics:
+        value = metrics["runtime_clean_completion"]
+        if value is not None and not isinstance(value, bool):
+            raise ValueError("runtime_clean_completion must be boolean or null")
+
     if "artifacts" in metrics:
         artifacts = metrics["artifacts"]
         if (
@@ -259,6 +265,7 @@ def evaluate_command_oracle(
         "estimated_cost": metrics.get("estimated_cost"),
         "human_interventions": metrics.get("human_interventions", 0),
         "artifacts": metrics.get("artifacts", []),
+        "runtime_clean_completion": metrics.get("runtime_clean_completion"),
         "failure_reason": None if success else result["stderr"] or result["stdout"],
         "evidence": {
             "oracle_type": "command-exit",
