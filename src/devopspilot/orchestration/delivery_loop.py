@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Mapping
 
 from devopspilot.contracts.delivery import (
     DeliveryPhase,
@@ -46,6 +47,7 @@ class DeliveryLoop:
         repository_id: str,
         work_item_id: str,
         target_branch: str | None = None,
+        task_metadata: Mapping[str, str] | None = None,
     ) -> DeliveryState:
         repository = await self._scm.get_repository(repository_id)
         work_item = await self._scm.get_work_item(repository, work_item_id)
@@ -57,6 +59,7 @@ class DeliveryLoop:
             repository=repository,
             work_item=work_item,
             target_branch=resolved_target,
+            metadata=dict(task_metadata or {}),
         )
         state = DeliveryState(task=task, phase=DeliveryPhase.RECEIVED)
 
