@@ -9,12 +9,12 @@ from typing import Mapping
 
 from devopspilot.contracts.providers import (
     ChangeRequestRef,
+    CommentSubjectRef,
     RepositoryRef,
     ReviewRef,
     ReviewState,
     SCMCapability,
     SCMEvent,
-    SCMProvider,
     WorkItemRef,
 )
 
@@ -179,14 +179,14 @@ class GitHubSCMProvider:
 
     async def add_comment(
         self,
-        repository: RepositoryRef,
+        subject: CommentSubjectRef,
         *,
-        subject_id: str,
         body: str,
     ) -> None:
+        # GitHub uses the Issues comments endpoint for both Issues and PRs.
         await self._client.request_json(
             "POST",
-            f"/repos/{repository.full_name}/issues/{subject_id}/comments",
+            f"/repos/{subject.repository.full_name}/issues/{subject.subject_id}/comments",
             body={"body": body},
         )
 
@@ -233,6 +233,3 @@ class GitHubSCMProvider:
             state=str(data.get("state", "open")),
             web_url=str(data["html_url"]) if data.get("html_url") else None,
         )
-
-
-assert isinstance(GitHubSCMProvider, type)
