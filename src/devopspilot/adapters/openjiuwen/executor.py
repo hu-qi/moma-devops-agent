@@ -239,6 +239,12 @@ class OpenJiuwenTaskExecutor:
                 "OpenJiuwen execution completed without a canonical trajectory"
             )
         runtime_metrics = trajectory_runtime_metrics(capture_result.trajectory)
+        skill_tool_calls = sum(
+            1
+            for event in capture_result.trajectory.events
+            if getattr(event.kind, "value", str(event.kind)) == "tool"
+            and "skill" in event.name.lower()
+        )
         print(
             "DEVOPSPILOT_PHASE=trajectory.complete "
             f"id={capture_result.trajectory.trajectory_id} "
@@ -323,6 +329,7 @@ class OpenJiuwenTaskExecutor:
                 "trajectory_event_count": str(len(capture_result.trajectory.events)),
                 "model_calls": str(runtime_metrics["model_calls"]),
                 "tool_calls": str(runtime_metrics["tool_calls"]),
+                "skill_tool_calls": str(skill_tool_calls),
                 "input_tokens": str(runtime_metrics["input_tokens"]),
                 "output_tokens": str(runtime_metrics["output_tokens"]),
                 "capture_issues": str(len(capture_result.issues)),
