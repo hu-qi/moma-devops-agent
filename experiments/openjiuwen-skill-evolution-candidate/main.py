@@ -52,10 +52,10 @@ async def main() -> None:
             "dependencies, or blindly retrying a failed build."
         ),
         source_trajectory_ids=(
-            "devopsbench:ci.python.wrong_working_directory.001:baseline",
+            "devopsbench:ci.github_actions.working_directory.001:baseline",
         ),
         evaluation_cases=(
-            "ci.python.wrong_working_directory.001",
+            "ci.github_actions.working_directory.001",
         ),
         signals=(
             EvolutionSignalEvidence(
@@ -70,11 +70,11 @@ async def main() -> None:
                 ),
                 source="devopsbench",
                 trajectory_id=(
-                    "devopsbench:ci.python.wrong_working_directory.001:baseline"
+                    "devopsbench:ci.github_actions.working_directory.001:baseline"
                 ),
                 tool_name="ci-log",
                 metadata={
-                    "case_id": "ci.python.wrong_working_directory.001",
+                    "case_id": "ci.github_actions.working_directory.001",
                     "failure_class": "wrong-working-directory",
                 },
             ),
