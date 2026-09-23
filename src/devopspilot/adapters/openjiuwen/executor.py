@@ -106,7 +106,7 @@ class OpenJiuwenTaskExecutor:
                 "teammate": model_spec(coding_model),
             },
             "transport": {"type": "inprocess"},
-            "storage": {"type": "inmemory"},
+            "storage": {"type": "memory"},
             "team_name": f"devopspilot-exec-{task.work_item.item_id}",
             "lifecycle": "temporary",
             "teammate_mode": "build_mode",
