@@ -1,7 +1,11 @@
 """Minimal deterministic DevOpsBench runner.
 
-V0.1 validates benchmark case metadata and executes command-based oracles.
+V0.1 validates benchmark case metadata and the *seeded* fixture state.
 Agent execution is intentionally not coupled to this runner yet.
+
+For repair/debug cases, the fixture is expected to start broken:
+- seed_expected_exit_code describes the expected initial state;
+- expected_exit_code describes the target state after an Agent repair.
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ def load_case(case_dir: Path) -> dict[str, Any]:
     return case
 
 
-def run_command_oracle(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
+def run_seed_oracle(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
     fixture_src = case_dir / case["fixture"]["path"]
     if not fixture_src.exists():
         raise FileNotFoundError(f"fixture not found: {fixture_src}")
@@ -41,6 +45,7 @@ def run_command_oracle(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
         return {
             "case_id": case["id"],
             "category": case["category"],
+            "phase": "seed-validation",
             "status": "metadata-only",
         }
 
@@ -59,13 +64,22 @@ def run_command_oracle(case_dir: Path, case: dict[str, Any]) -> dict[str, Any]:
         )
 
     elapsed = time.perf_counter() - started
-    expected = int(oracle.get("expected_exit_code", 0))
+    seed_expected = int(
+        oracle.get(
+            "seed_expected_exit_code",
+            oracle.get("expected_exit_code", 0),
+        )
+    )
+    solution_expected = int(oracle.get("expected_exit_code", 0))
+
     return {
         "case_id": case["id"],
         "category": case["category"],
-        "status": "pass" if completed.returncode == expected else "fail",
+        "phase": "seed-validation",
+        "status": "pass" if completed.returncode == seed_expected else "fail",
         "exit_code": completed.returncode,
-        "expected_exit_code": expected,
+        "seed_expected_exit_code": seed_expected,
+        "solution_expected_exit_code": solution_expected,
         "elapsed_seconds": round(elapsed, 4),
         "stdout": completed.stdout[-4000:],
         "stderr": completed.stderr[-4000:],
@@ -77,9 +91,10 @@ def main() -> None:
 
     for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
         case = load_case(case_dir)
-        results.append(run_command_oracle(case_dir, case))
+        results.append(run_seed_oracle(case_dir, case))
 
     summary = {
+        "phase": "seed-validation",
         "total": len(results),
         "passed": sum(r["status"] == "pass" for r in results),
         "failed": sum(r["status"] == "fail" for r in results),
