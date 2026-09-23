@@ -1,0 +1,41 @@
+name: Team Pattern Creation Proposal
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/evolution.py"
+      - "src/devopspilot/adapters/openjiuwen/evolution.py"
+      - "src/devopspilot/adapters/openjiuwen/__init__.py"
+      - "experiments/team-pattern-creation-proposal/**"
+      - ".github/workflows/team-pattern-creation-proposal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proposal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Stage repeated-pattern Team Skill creation approval
+        env:
+          PYTHONPATH: src
+        run: python experiments/team-pattern-creation-proposal/main.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-pattern-creation-proposal
+          path: artifacts/team-pattern-creation-proposal.json
+          if-no-files-found: error
