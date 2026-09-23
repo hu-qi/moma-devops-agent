@@ -17,6 +17,7 @@ from devopspilot.contracts.evolution import (
     EvolutionCandidate,
     EvolutionEvidence,
     PromotionDecision,
+    TeamPatternCreationProposal,
 )
 
 
@@ -63,6 +64,11 @@ class SQLiteEvolutionAuditStore:
                     payload TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS team_pattern_proposal (
+                    proposal_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS evolution_evidence (
                     candidate_id TEXT NOT NULL,
                     version INTEGER NOT NULL,
@@ -78,6 +84,60 @@ class SQLiteEvolutionAuditStore:
                 );
                 """
             )
+
+    async def save_team_pattern_proposal(
+        self,
+        proposal: TeamPatternCreationProposal,
+    ) -> TeamPatternCreationProposal:
+        return await asyncio.to_thread(
+            self._save_team_pattern_proposal_sync,
+            proposal,
+        )
+
+    def _save_team_pattern_proposal_sync(
+        self,
+        proposal: TeamPatternCreationProposal,
+    ) -> TeamPatternCreationProposal:
+        payload = _json(_encode_team_pattern_proposal(proposal))
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT payload FROM team_pattern_proposal WHERE proposal_id = ?",
+                (proposal.proposal_id,),
+            ).fetchone()
+            if row is None:
+                db.execute(
+                    "INSERT INTO team_pattern_proposal(proposal_id, payload) VALUES (?, ?)",
+                    (proposal.proposal_id, payload),
+                )
+                return proposal
+            if row["payload"] != payload:
+                raise EvolutionAuditConflict(
+                    f"team pattern proposal {proposal.proposal_id!r} "
+                    "already exists with different content"
+                )
+        return proposal
+
+    async def load_team_pattern_proposal(
+        self,
+        proposal_id: str,
+    ) -> TeamPatternCreationProposal | None:
+        return await asyncio.to_thread(
+            self._load_team_pattern_proposal_sync,
+            proposal_id,
+        )
+
+    def _load_team_pattern_proposal_sync(
+        self,
+        proposal_id: str,
+    ) -> TeamPatternCreationProposal | None:
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT payload FROM team_pattern_proposal WHERE proposal_id = ?",
+                (proposal_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return _decode_team_pattern_proposal(json.loads(row["payload"]))
 
     async def save_candidate(self, candidate: EvolutionCandidate) -> EvolutionCandidate:
         return await asyncio.to_thread(self._save_candidate_sync, candidate)
@@ -227,6 +287,36 @@ def _decode_artifact(value: dict[str, Any]) -> ArtifactVersion:
         version=value["version"],
         content=value["content"],
         metadata=value.get("metadata", {}),
+    )
+
+
+def _encode_team_pattern_proposal(
+    value: TeamPatternCreationProposal,
+) -> dict[str, Any]:
+    return {
+        "proposal_id": value.proposal_id,
+        "proposal_key": value.proposal_key,
+        "reusable_guidance": value.reusable_guidance,
+        "evidence": list(value.evidence),
+        "source_opportunity_ids": list(value.source_opportunity_ids),
+        "provider_id": value.provider_id,
+        "approval_payload": dict(value.approval_payload),
+        "production_write": value.production_write,
+    }
+
+
+def _decode_team_pattern_proposal(
+    value: dict[str, Any],
+) -> TeamPatternCreationProposal:
+    return TeamPatternCreationProposal(
+        proposal_id=value["proposal_id"],
+        proposal_key=value["proposal_key"],
+        reusable_guidance=value["reusable_guidance"],
+        evidence=tuple(value.get("evidence", [])),
+        source_opportunity_ids=tuple(value.get("source_opportunity_ids", [])),
+        provider_id=value["provider_id"],
+        approval_payload=value.get("approval_payload", {}),
+        production_write=bool(value.get("production_write", False)),
     )
 
 
