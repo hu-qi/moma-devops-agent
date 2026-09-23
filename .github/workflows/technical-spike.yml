@@ -1,0 +1,99 @@
+name: Technical Spike
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_moma_live:
+        description: "Run live MoMA Model + DeepAgent probes"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  openjiuwen-runtime-surface:
+    name: OpenJiuwen runtime surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install OpenJiuwen
+        env:
+          OPENJIUWEN_INSTALL_SPEC: ${{ vars.OPENJIUWEN_INSTALL_SPEC }}
+        run: |
+          set -euo pipefail
+          SPEC="${OPENJIUWEN_INSTALL_SPEC:-openjiuwen}"
+          echo "Installing OpenJiuwen from configured package spec."
+          python -m pip install --upgrade pip
+          python -m pip install "$SPEC"
+
+      - name: Inspect AgentTeam and RSI public surface
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python experiments/openjiuwen-runtime-smoke/main.py | tee artifacts/openjiuwen-runtime-surface.txt
+
+      - name: Upload runtime-surface artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openjiuwen-runtime-surface
+          path: artifacts/openjiuwen-runtime-surface.txt
+          if-no-files-found: error
+
+  moma-live:
+    name: MoMA live compatibility
+    if: ${{ inputs.run_moma_live }}
+    needs: openjiuwen-runtime-surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+      OPENJIUWEN_INSTALL_SPEC: ${{ vars.OPENJIUWEN_INSTALL_SPEC }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          test -n "$MOMA_API_BASE" || (echo "::error::Missing repository variable MOMA_API_BASE" && exit 1)
+          test -n "$MOMA_MODEL" || (echo "::error::Missing repository variable MOMA_MODEL" && exit 1)
+          test -n "$MOMA_API_KEY" || (echo "::error::Missing repository secret MOMA_API_KEY" && exit 1)
+
+      - name: Install OpenJiuwen
+        run: |
+          set -euo pipefail
+          SPEC="${OPENJIUWEN_INSTALL_SPEC:-openjiuwen}"
+          python -m pip install --upgrade pip
+          python -m pip install "$SPEC"
+
+      - name: Run MoMA Model + DeepAgent probe
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python experiments/moma-openjiuwen-poc/main.py | tee artifacts/moma-openjiuwen-poc.txt
+
+      - name: Upload MoMA spike artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: moma-openjiuwen-poc
+          path: artifacts/moma-openjiuwen-poc.txt
+          if-no-files-found: error
