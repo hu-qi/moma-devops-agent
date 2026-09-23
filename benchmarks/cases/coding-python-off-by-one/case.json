@@ -1,0 +1,22 @@
+{
+  "id": "coding.python.off_by_one.001",
+  "category": "coding",
+  "task": "Fix sum_to so it includes n while preserving the public API.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": ["range_sum.py"],
+    "max_changed_files": 1
+  },
+  "oracle": {
+    "command": "python test_range_sum.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 30,
+    "max_model_calls": 10,
+    "max_tool_calls": 30
+  },
+  "risk": "low"
+}
