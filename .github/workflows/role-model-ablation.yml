@@ -1,0 +1,78 @@
+name: Role Model Ablation
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: Experiment label
+        required: true
+        default: coding-qwen3
+      leader_model:
+        description: Leader / reasoning model
+        required: true
+        default: GLM-5.3
+      coding_model:
+        description: Coding model
+        required: true
+        default: Qwen3-32B
+      review_model:
+        description: Review model
+        required: true
+        default: deepseek-v4.1-flash
+      repetitions:
+        description: Sequential repetitions (1-5)
+        required: true
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+      MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Run controlled repetitions
+        shell: bash
+        env:
+          EXP_LABEL: ${{ inputs.label }}
+          LEADER_MODEL: ${{ inputs.leader_model }}
+          CODING_MODEL: ${{ inputs.coding_model }}
+          REVIEW_MODEL: ${{ inputs.review_model }}
+          REPETITIONS: ${{ inputs.repetitions }}
+          PYTHONPATH: src
+        run: |
+          set -euo pipefail
+          case "$REPETITIONS" in
+            1|2|3|4|5) ;;
+            *) echo "::error::repetitions must be 1-5"; exit 2 ;;
+          esac
+          mkdir -p artifacts
+          : > artifacts/role-ablation.jsonl
+          for i in $(seq 1 "$REPETITIONS"); do
+            echo "=== repetition $i/$REPETITIONS ==="
+            python experiments/role-model-ablation/main.py               --label "$EXP_LABEL"               --leader "$LEADER_MODEL"               --coding "$CODING_MODEL"               --review "$REVIEW_MODEL"               --repetition "$i"               | tee "artifacts/run-$i.log"
+            grep '^ROLE_ABLATION_RESULT=' "artifacts/run-$i.log"               | sed 's/^ROLE_ABLATION_RESULT=//'               >> artifacts/role-ablation.jsonl
+          done
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: role-ablation-${{ inputs.label }}
+          path: artifacts/
+          if-no-files-found: warn
