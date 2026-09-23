@@ -11,6 +11,7 @@
   },
   "oracle": {
     "command": "python test_range_sum.py",
+    "seed_expected_exit_code": 1,
     "expected_exit_code": 0
   },
   "budget": {
