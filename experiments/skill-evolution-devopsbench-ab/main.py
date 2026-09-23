@@ -131,6 +131,7 @@ class BenchmarkWorkspaceProvider:
                 "skills_dir": str(self.skills_root),
                 "enabled_skills": "build-debug",
                 "skill_mode": "all",
+                "execution_id": self.variant,
             },
         )
 
@@ -187,17 +188,23 @@ async def run_variant(
     started = time.perf_counter()
     execution = None
     execution_error = ""
+    failure_metadata: dict[str, str] = {}
     try:
         execution = await executor.execute(task)
     except Exception as exc:
         execution_error = f"{type(exc).__name__}: {exc}"
+        failure_metadata = dict(getattr(exc, "metadata", {}) or {})
     duration_ms = int((time.perf_counter() - started) * 1000)
 
     if provider.workspace is None:
         raise RuntimeError(f"{variant} never created an evaluation workspace")
 
     report = benchmark_eval(provider.workspace, variant=variant)
-    metadata = dict(execution.metadata) if execution is not None else {}
+    metadata = (
+        dict(execution.metadata)
+        if execution is not None
+        else failure_metadata
+    )
 
     observation = BenchmarkObservation(
         case_id=CASE_ID,
