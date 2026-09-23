@@ -38,7 +38,8 @@ Observe Again
 
 V1：
 - Prompt
-- Skill
+- Skill Experience Overlay（优先）
+- Skill Definition / SKILL.md（高风险，后置）
 - Routing Policy
 - Team Pattern
 - Tool Strategy
@@ -107,7 +108,11 @@ Candidate 必须至少满足：
 - deterministic checks pass
 - versioned and rollbackable
 
-生产晋级默认需要 Human Approval。
+Gate 失败的 Candidate 自动进入 REJECTED，不允许进入人工晋级。
+
+Gate 通过的 Candidate 进入 PENDING_HUMAN，生产晋级仍必须 Human Approval。
+
+任何 Candidate 都不得直接自动变为 APPROVED。
 
 ## 8. OpenJiuwen RSI Integration
 
@@ -117,6 +122,36 @@ Candidate 必须至少满足：
 - artifact optimization
 - evaluator
 - skill self-evolution
+
+V1 已确定优先采用 OpenJiuwen Skill Experience Evolution，而不是直接重写 SKILL.md：
+
+```text
+Trajectory / DevOpsBench Evidence
+          ↓
+EvolutionSignalEvidence
+          ↓
+OpenJiuwen SkillEvolutionRail
+(auto_save=False, requires_approval=True)
+          ↓
+PendingChange
+          ↓
+DevOpsPilot EvolutionCandidate
+          ↓
+临时 Skill Sandbox
+          ↓
+DevOpsBench A/B
+          ↓
+Regression Gate
+   ┌──────┴──────┐
+   ↓             ↓
+REJECTED     PENDING_HUMAN
+                 ↓
+           Human Approval
+                 ↓
+        Versioned Promotion
+```
+
+Candidate 生成阶段必须使用 Skill Store 的临时副本；OpenJiuwen 的 approve/persist API 不在 Candidate Provider 中调用。
 
 但 DevOpsPilot 对外保持独立 Evolution Provider / Artifact Contract。
 
@@ -138,9 +173,9 @@ V1 Demo 至少展示：
 ```text
 CI Debug Skill v1
    ↓
-多次轨迹暴露低效步骤
+轨迹 / Benchmark 暴露可复用失败模式
    ↓
-产生 Skill Candidate v2
+产生 Skill Experience Candidate v2
    ↓
 DevOpsBench 离线测试
    ↓
