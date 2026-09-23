@@ -23,9 +23,9 @@ env:
   MOMA_MODEL: ${{ vars.MOMA_MODEL }}
   MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
   # Live-validated candidate defaults. Repository variables override them.
-  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'DeepSeek-R1-0528' }}
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
   MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
-  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'GLM-5.3' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
 
 jobs:
   live-executor:
