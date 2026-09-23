@@ -120,7 +120,6 @@ def validate_precondition(case_dir: Path, case: dict[str, Any]) -> dict[str, Any
             "status": "pass" if result["exit_code"] == expected else "fail",
             "precondition_type": kind,
             "expected_exit_code": expected,
-            "runtime_metrics_supplied": bool(metrics),
             **result,
         }
 
@@ -264,6 +263,7 @@ def evaluate_command_oracle(
         "evidence": {
             "oracle_type": "command-exit",
             "expected_exit_code": expected,
+            "runtime_metrics_supplied": bool(metrics),
             **result,
         },
     }
