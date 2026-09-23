@@ -1,21 +1,50 @@
 {
   "id": "review.python.sql_injection.001",
+  "version": "0.1.0",
   "category": "code-review",
+  "title": "Python SQL injection review",
+  "description": "Identify unsafe SQL construction and recommend parameterized queries without changing files.",
   "task": "Review the code and report security-relevant findings. Do not modify files.",
   "fixture": {
     "path": "fixture"
   },
   "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
     "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "user_repository.py",
+    "contains": [
+      "query = f\"SELECT",
+      "conn.execute(query)"
+    ]
   },
   "oracle": {
     "type": "structured-review",
-    "required_findings": ["sql-injection", "parameterized-query"]
+    "required_findings": [
+      "sql-injection",
+      "parameterized-query"
+    ]
   },
   "budget": {
     "timeout_seconds": 60,
     "max_model_calls": 8,
     "max_tool_calls": 20
   },
-  "risk": "medium"
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "security",
+    "sql-injection",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
 }
