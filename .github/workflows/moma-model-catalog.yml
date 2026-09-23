@@ -1,0 +1,26 @@
+name: MoMA Model Catalog
+
+on:
+  push:
+    paths:
+      - ".github/workflows/moma-model-catalog.yml"
+      - "experiments/moma-model-catalog/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe sanitized MoMA model catalog
+        run: python experiments/moma-model-catalog/main.py
