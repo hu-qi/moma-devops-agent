@@ -1,0 +1,33 @@
+name: Evolution Audit Store
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/persistence/evolution_audit.py"
+      - "src/devopspilot/persistence/__init__.py"
+      - "experiments/evolution-audit-store/**"
+      - ".github/workflows/evolution-audit-store.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/persistence/evolution_audit.py"
+      - "src/devopspilot/persistence/__init__.py"
+      - "experiments/evolution-audit-store/**"
+      - ".github/workflows/evolution-audit-store.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate evolution audit persistence
+        env:
+          PYTHONPATH: src
+        run: python experiments/evolution-audit-store/main.py
