@@ -12,30 +12,100 @@
     "duration_ms"
   ],
   "properties": {
-    "case_id": {"type": "string"},
-    "run_id": {"type": "string"},
-    "variant": {"type": "string"},
+    "case_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "variant": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
-      "enum": ["passed", "failed", "error", "timeout", "skipped"]
+      "enum": [
+        "passed",
+        "failed",
+        "error",
+        "timeout",
+        "skipped"
+      ]
     },
-    "task_success": {"type": "boolean"},
-    "test_pass": {"type": ["boolean", "null"]},
-    "ci_pass": {"type": ["boolean", "null"]},
-    "regression_count": {"type": "integer", "minimum": 0, "default": 0},
-    "duration_ms": {"type": "integer", "minimum": 0},
-    "model_calls": {"type": "integer", "minimum": 0, "default": 0},
-    "tool_calls": {"type": "integer", "minimum": 0, "default": 0},
-    "input_tokens": {"type": "integer", "minimum": 0, "default": 0},
-    "output_tokens": {"type": "integer", "minimum": 0, "default": 0},
-    "estimated_cost": {"type": ["number", "null"], "minimum": 0},
-    "human_interventions": {"type": "integer", "minimum": 0, "default": 0},
+    "task_success": {
+      "type": "boolean"
+    },
+    "test_pass": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "ci_pass": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "regression_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "model_calls": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "tool_calls": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "input_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "output_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "estimated_cost": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "human_interventions": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
     "artifacts": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
-    "failure_reason": {"type": ["string", "null"], "default": null}
+    "failure_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {}
+    }
   },
   "additionalProperties": false
 }
