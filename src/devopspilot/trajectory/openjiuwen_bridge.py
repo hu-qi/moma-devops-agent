@@ -118,7 +118,7 @@ def map_openjiuwen_span(
             attributes=common,
         )
 
-    if normalized in {"agent", "team", "task", "event"}:
+    if normalized in {"agent", "team", "task", "event", "member", "message"}:
         for key, canonical in (
             ("agentteam.agent.role", "role"),
             ("agentteam.task.id", "task_id"),

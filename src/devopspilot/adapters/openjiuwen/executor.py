@@ -6,13 +6,16 @@ import asyncio
 import os
 import shlex
 import shutil
+import tempfile
 from dataclasses import replace
 from pathlib import Path
 
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.execution import ExecutionWorkspace, WorkspaceProvider
 from devopspilot.contracts.providers import MaaSProvider
+from devopspilot.evaluation.metrics import trajectory_runtime_metrics
 from devopspilot.routing import AgentTeamModelPlanner, DeliveryTaskProfiler
+from devopspilot.trajectory import OpenJiuwenTrajectoryCapture
 
 from .model_router import build_team_model_routing
 
@@ -169,6 +172,14 @@ class OpenJiuwenTaskExecutor:
             f"coding={model_routing.coding_model} "
             f"review={model_routing.review_model}"
         )
+        capture = OpenJiuwenTrajectoryCapture(
+            task_id=task.work_item.item_id,
+            repository=task.repository.full_name,
+            exporter="file",
+            traces_dir=tempfile.mkdtemp(prefix="devopspilot_otel_"),
+        )
+        capture.start()
+        capture_result = None
         await Runner.start()
         try:
             async with asyncio.timeout(self._completion_timeout):
@@ -187,8 +198,25 @@ class OpenJiuwenTaskExecutor:
                 f"({self._completion_timeout}s)"
             ) from exc
         finally:
-            await Runner.stop()
+            try:
+                await Runner.stop()
+            finally:
+                try:
+                    capture_result = capture.drain()
+                finally:
+                    capture.close()
         print("DEVOPSPILOT_PHASE=agentteam.complete")
+        if capture_result is None or capture_result.trajectory is None:
+            raise RuntimeError(
+                "OpenJiuwen execution completed without a canonical trajectory"
+            )
+        runtime_metrics = trajectory_runtime_metrics(capture_result.trajectory)
+        print(
+            "DEVOPSPILOT_PHASE=trajectory.complete "
+            f"id={capture_result.trajectory.trajectory_id} "
+            f"model_calls={runtime_metrics['model_calls']} "
+            f"tool_calls={runtime_metrics['tool_calls']}"
+        )
 
         test_command = workspace.metadata.get("test_command", "").strip()
         test_summary = ""
@@ -263,6 +291,13 @@ class OpenJiuwenTaskExecutor:
                     model_routing.model_router["model_names"]
                 ),
                 "changed_paths": ",".join(sorted(changed_paths)),
+                "trajectory_id": capture_result.trajectory.trajectory_id,
+                "trajectory_event_count": str(len(capture_result.trajectory.events)),
+                "model_calls": str(runtime_metrics["model_calls"]),
+                "tool_calls": str(runtime_metrics["tool_calls"]),
+                "input_tokens": str(runtime_metrics["input_tokens"]),
+                "output_tokens": str(runtime_metrics["output_tokens"]),
+                "capture_issues": str(len(capture_result.issues)),
             },
         )
 

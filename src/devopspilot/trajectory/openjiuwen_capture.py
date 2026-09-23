@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from devopspilot.contracts.trajectory import DeliveryTrajectory
@@ -40,12 +41,14 @@ class OpenJiuwenTrajectoryCapture:
         task_id: str,
         repository: str,
         categories: frozenset[str] = DEFAULT_OPENJIUWEN_SPAN_CATEGORIES,
-        exporter: str = "console",
+        exporter: str = "file",
+        traces_dir: str | Path | None = None,
     ) -> None:
         self.task_id = task_id
         self.repository = repository
         self.categories = categories
         self.exporter = exporter
+        self.traces_dir = str(traces_dir) if traces_dir is not None else None
         self._processor: Any | None = None
         self._subscription: Any | None = None
         self._release: Any | None = None
@@ -64,7 +67,10 @@ class OpenJiuwenTrajectoryCapture:
             get_trajectory_span_processor,
         )
 
-        acquire_observability(ObservabilityConfig(exporter=self.exporter))
+        config_kwargs: dict[str, Any] = {"exporter": self.exporter}
+        if self.exporter == "file" and self.traces_dir:
+            config_kwargs["traces_dir"] = self.traces_dir
+        acquire_observability(ObservabilityConfig(**config_kwargs))
         processor = get_trajectory_span_processor()
         subscription = processor.subscribe(
             include_span_categories=self.categories,

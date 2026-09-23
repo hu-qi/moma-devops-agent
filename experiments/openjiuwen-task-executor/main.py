@@ -131,6 +131,11 @@ async def main() -> None:
 
     assert result.published is False
     assert result.commit_sha == run("git", "rev-parse", "HEAD", cwd=workspace)
+    assert result.metadata.get("trajectory_id")
+    assert int(result.metadata.get("trajectory_event_count", "0")) > 0
+    assert int(result.metadata.get("model_calls", "0")) > 0
+    assert int(result.metadata.get("tool_calls", "0")) > 0
+    assert int(result.metadata.get("input_tokens", "0")) > 0
 
     changed = run(
         "git", "diff", "--name-only", "HEAD^", "HEAD", cwd=workspace
@@ -144,6 +149,7 @@ async def main() -> None:
     assert report["task_success"] is True
     assert report["test_pass"] is True
 
+    print("OPENJIUWEN_TRAJECTORY_CAPTURE_OK")
     print("OPENJIUWEN_TASK_EXECUTOR_OK")
     print("AGENTTEAM_CODE_CHANGE_OK")
     print("AGENTTEAM_REVIEW_GATE_OK")
@@ -159,6 +165,13 @@ async def main() -> None:
         "coding_model": result.metadata.get("coding_model"),
         "review_model": result.metadata.get("review_model"),
         "model_router_names": result.metadata.get("model_router_names"),
+        "trajectory_id": result.metadata.get("trajectory_id"),
+        "trajectory_event_count": result.metadata.get("trajectory_event_count"),
+        "model_calls": result.metadata.get("model_calls"),
+        "tool_calls": result.metadata.get("tool_calls"),
+        "input_tokens": result.metadata.get("input_tokens"),
+        "output_tokens": result.metadata.get("output_tokens"),
+        "capture_issues": result.metadata.get("capture_issues"),
     }, ensure_ascii=False, indent=2))
 
 
