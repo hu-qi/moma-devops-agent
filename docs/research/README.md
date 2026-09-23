@@ -4,16 +4,20 @@
 
 ## Completed / Active
 
-1. [01-moma-capability-research.md](./01-moma-capability-research.md) — MoMA 平台与 API 能力边界
-2. [02-openjiuwen-runtime-research.md](./02-openjiuwen-runtime-research.md) — OpenJiuwen Runtime / 0.1.19 line
-3. [03-moma-openjiuwen-integration-spike.md](./03-moma-openjiuwen-integration-spike.md) — MoMA × OpenJiuwen live spike 计划
-4. [04-agentteam-rsi-spike.md](./04-agentteam-rsi-spike.md) — AgentTeam + RSI 联动摸底
-5. [04-agentteam-runtime-research.md](./04-agentteam-runtime-research.md) — AgentTeam Runtime 边界
-6. [05-rsi-evolution-research.md](./05-rsi-evolution-research.md) — Self-Evolving / RSI 研究
+1. [01-moma-capability-research.md](./01-moma-capability-research.md) — MoMA API 与 live capability evidence
+2. [02-openjiuwen-runtime-research.md](./02-openjiuwen-runtime-research.md) — OpenJiuwen Runtime / release-v0.1.19 line
+3. [03-moma-openjiuwen-integration-spike.md](./03-moma-openjiuwen-integration-spike.md) — MoMA × OpenJiuwen integration ladder
+4. [04-agentteam-rsi-spike.md](./04-agentteam-rsi-spike.md) — AgentTeam + RSI live verification
+5. [04-agentteam-runtime-research.md](./04-agentteam-runtime-research.md) — AgentTeam Runtime boundary
+6. [05-rsi-evolution-research.md](./05-rsi-evolution-research.md) — Self-Evolving / RSI research
 7. [05-devopsbench-v0.1.md](./05-devopsbench-v0.1.md) — DevOpsBench v0.1
 8. [06-devopsbench-v0.1-contract.md](./06-devopsbench-v0.1-contract.md) — Benchmark Contract
 9. [07-core-contracts.md](./07-core-contracts.md) — DevOpsPilot Core Contracts
-10. [08-scm-capability-matrix.md](./08-scm-capability-matrix.md) — GitHub / GitCode / AtomGit / Gitee / CNB / GitLink 能力矩阵
+10. [08-scm-capability-matrix.md](./08-scm-capability-matrix.md) — GitHub / GitCode / AtomGit / Gitee / CNB / GitLink
+11. [09-moma-model-config.md](./09-moma-model-config.md) — bootstrap model vs capability routing
+12. [10-cnb-adapter-strategy.md](./10-cnb-adapter-strategy.md) — CNB adapter transport strategy
+13. [11-cnb-openapi-contract-mapping.md](./11-cnb-openapi-contract-mapping.md) — CNB Swagger → DevOpsPilot contracts
+14. [12-delivery-loop.md](./12-delivery-loop.md) — first provider-neutral product delivery loop
 
 ## Evidence Rule
 
@@ -28,7 +32,7 @@
 
 ## Decision Flow
 
-```text
+~~~text
 Research / Spike
       ↓
 Evidence
@@ -38,6 +42,6 @@ Core Contract / PRD Decision
 Implementation
       ↓
 DevOpsBench
-```
+~~~
 
-重大技术决策回写 `PRD/00-decisions.md`；实现代码不得绕过已冻结的 Core Contracts。
+重大技术决策回写 PRD/00-decisions.md；实现代码不得绕过已冻结的 Core Contracts。
