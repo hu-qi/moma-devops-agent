@@ -100,9 +100,17 @@ class OpenJiuwenTaskExecutor:
             timeout=120.0,
         )
 
+        configured_skills_dir = workspace.metadata.get("skills_dir", "").strip()
+        enabled_skills = [
+            item.strip()
+            for item in workspace.metadata.get("enabled_skills", "").split(",")
+            if item.strip()
+        ]
+        skill_mode = workspace.metadata.get("skill_mode", "all").strip() or "all"
+
         def model_spec(model_name: str) -> dict:
             # Fallback path if model-router allocation is unavailable.
-            return {
+            spec = {
                 "model": {
                     "model_client_config": {
                         "client_provider": "OpenAI",
@@ -123,6 +131,18 @@ class OpenJiuwenTaskExecutor:
                 # models do not emit an expected HTTP 400 during startup.
                 "enable_read_image_multimodal": False,
             }
+            if configured_skills_dir:
+                skill_params: dict[str, object] = {
+                    "skill_mode": skill_mode,
+                    "skills_dir": configured_skills_dir,
+                }
+                if enabled_skills:
+                    skill_params["enabled_skills"] = enabled_skills
+                spec["rails"] = [{
+                    "type": "skill_use",
+                    "params": skill_params,
+                }]
+            return spec
 
         spec = TeamAgentSpec.model_validate({
             "agents": {
@@ -306,6 +326,8 @@ class OpenJiuwenTaskExecutor:
                 "input_tokens": str(runtime_metrics["input_tokens"]),
                 "output_tokens": str(runtime_metrics["output_tokens"]),
                 "capture_issues": str(len(capture_result.issues)),
+                "skills_dir": configured_skills_dir,
+                "enabled_skills": ",".join(enabled_skills),
                 "runtime_degraded": "true" if runtime_timed_out else "false",
                 "runtime_degradation_reason": (
                     "agentteam_timeout" if runtime_timed_out else ""
@@ -417,6 +439,9 @@ Constraints:
 - Allowed paths: {allowed}
 - Forbidden paths: {forbidden}
 - Independent test command: {test_command}
+- Enabled Skills: {workspace.metadata.get("enabled_skills", "(none)")}
+- Skills directory: {workspace.metadata.get("skills_dir", "(none)")}
+- If a relevant Skill is enabled, invoke and follow it before choosing a repair.
 - Do not commit, push, or modify anything outside {workspace.path}
 - Use sequential dynamic delegation, not a task-board workflow.
 - Build the team, then spawn ONLY coding_agent first with model_name={coding_model!r}.
