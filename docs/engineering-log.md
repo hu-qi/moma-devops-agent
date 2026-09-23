@@ -14,179 +14,162 @@ PRD v0.1 已冻结：
 - Multi-SCM / CI Provider
 - Industry Engineering Packs
 
-### Phase
+### Current Phase
 
-**Technical Exploration → Reference Adapters & Live Capability Verification**
+**Technical Exploration completed for core path → Product Orchestration started**
 
-## OpenJiuwen 0.1.19
+## OpenJiuwen release/v0.1.19 line
 
-GitHub Actions 已从：
+GitHub Actions 已从 openJiuwen-ai/agent-core@release/v0.1.19 真实安装并运行。
 
-```text
-openJiuwen-ai/agent-core@release/v0.1.19
-```
+Resolved source commit:
 
-真实安装并运行。
-
-解析 commit：
-
-```text
 6f3a33fbb93aece65105c477c573057fead0e8dd
-```
 
-Runtime Surface CI 已确认：
+注意：当前安装后的 package metadata 仍报告 0.1.18。工程记录同时保留 source baseline 与 package metadata，不隐藏差异。
+
+Runtime CI 已确认：
+- DeepAgent
 - TeamAgentSpec
-- DeepAgent / create_deep_agent
 - TeamEvaluator
 - MemberOptimizer
 - ProgramArtifactProvider
 - SingleHarnessIterativeOptimizationOrchestrator
-- create_auto_harness_orchestrator
+- AutoHarnessOrchestrator
 
-AgentTeam 与 RSI 均为 runtime-verified capability。
+## MoMA — Advanced live path VERIFIED
 
-## MoMA — Basic Live Path VERIFIED
+Basic run:
+- MoMA Live Smoke / 35876800666 / success
 
-Workflow:
+Extended run:
+- MoMA Capability Spikes / 35877219890 / success
 
-```text
-MoMA Live Smoke
-run 35876800666
-result: success
-```
-
-实际链路：
-
-```text
-MoMA
- ↓
-OpenAI-compatible endpoint
- ↓
-OpenJiuwen Model.invoke
- ↓
-DeepAgent.invoke
- ↓
-success
-```
-
-当前 bootstrap model：
-`deepseek-v4-flash-0731`
-
-实测确认：
-- endpoint/auth 配置有效
-- Model.invoke 成功
-- DeepAgent.invoke 成功
-- usage token 可读
-- reasoning content 可读
-- response model 可读
-- TTFT / generation / queue / TPS 等 provider metrics 可读
-
-当前 bootstrap model 不支持 image input；OpenJiuwen 自动 capability probe 正确识别并降级。该结论仅针对当前模型，不代表 MoMA 平台没有多模态模型。
-
-下一轮 workflow：
-`MoMA Capability Spikes`
-
-目标：
-- Streaming
-- Tool Calling
+Live verified:
+- OpenAI-compatible model invocation
+- DeepAgent
+- Streaming: 11 chunks, MOMA_STREAM_OK
+- Tool Calling: get_build_status(run_id=42)
 - Dynamic AgentTeam
-- RSI Runtime Injection
+- RSI model/runtime injection
+- token usage
+- reasoning content
+- response model metadata
+- TTFT / generation / queue / TPS metrics
 
-## MoMA Model Configuration
+Dynamic team evidence:
+- DevOps Leader
+- coding-agent workspace
+- review-agent workspace
+- coding task assigned first
+- review task independently executed after coding dependency
+- team/session checkpoint persisted
 
-新增：
+Current bootstrap model:
+deepseek-v4-flash-0731
 
-```text
-configs/models/moma.yaml
-```
-
-`MOMA_MODEL` 明确定义为 bootstrap/default model。
-
-正式模型策略仍然是：
-
-```text
-TaskProfile
- ↓
-FAST / REASONING / CODING / REVIEW / JUDGE
- ↓
-RoutingPolicy
- ↓
-MoMA Provider
-```
+MOMA_MODEL remains bootstrap/default only. Formal routing remains FAST / REASONING / CODING / REVIEW / JUDGE.
 
 ## DevOpsBench
 
-DevOpsBench CI 已连续成功。
+DevOpsBench CI remains green.
 
-当前支持：
-- deterministic fixture preconditions
-- candidate evaluation evidence
-- solution oracle semantics
-- baseline/candidate lifecycle
+Current deterministic cases include:
+- coding.python.off_by_one.001
+- CI working-directory failure
+- SQL injection review
 
-## Provider Contracts
+The next runtime integration will use a deterministic coding fixture.
 
-Core Provider Contract workflow：**success**
+## Provider Contracts — hardened
 
-当前标准契约：
-- MaaSProvider
-- SCMProvider
-- CIProvider
-- ReviewState / ReviewRef
-- CICapability
-- CIArtifactRef
+Current contract now includes:
+- typed comment target: WORK_ITEM / CHANGE_REQUEST
+- CI run discovery by commit SHA / source ref / status
+- review objects
+- CI capabilities
+- trigger / cancel / logs / artifacts
 
-SCM 与 CI 保持解耦。
+Reason:
+- GitHub uses one Issue-comments family for Issue and PR conversation.
+- CNB exposes separate Issue/Pull comment endpoints.
+- PR/MR often auto-triggers CI, so orchestration must discover rather than duplicate-trigger builds.
 
-## GitHub Reference Adapter — VERIFIED
+Latest validation:
+- Core Provider Contract / 35879236115 / success
+- GitHub Reference Adapter / 35879240726 / success
+- CNB Reference Adapter / 35879250744 / success
 
-新增：
-- `src/devopspilot/adapters/github/client.py`
-- `src/devopspilot/adapters/github/scm.py`
-- `src/devopspilot/adapters/github/ci.py`
+## GitHub Reference Adapter
 
-覆盖：
-- Repository
-- Issue
+Verified:
+- Repository / Issue
 - PR create/read
-- Comment
+- typed comments
 - Review
-- Webhook normalization
-- HMAC SHA-256 webhook verification
-- Actions run
+- Webhook normalization + HMAC
+- Actions run discovery
 - job logs
-- retry failed jobs
+- rerun failed
 - trigger/cancel
 - artifacts
 
-`GitHub Reference Adapter` workflow：**success**
+## CNB Reference Adapter
 
-该 Adapter 现在是后续国产 Provider 的 reference implementation。
+Official Swagger mapped to:
+- Repository / Issue
+- Pull create/read
+- Issue and Pull comments
+- Review
+- Build run discovery by sha/sourceRef/status
+- Build status
+- stage logs
+- trigger
+- cancel
 
-## CNB — Domestic Provider Spike
+Intentionally not claimed:
+- native retry/rerun: no dedicated current OpenAPI operation found
+- build artifact correlation: not yet verified
+- external webhook capability: repository event history is known, external delivery not yet verified
 
-官方 CNB CLI v1.16.13 已通过 GitHub Actions 安装与命令面验证。
+## First DevOpsPilot product core — DeliveryLoop
 
-已观察：
-- issues module: 33 tools
-- pulls module: 34 tools
-- pull review tools
-- `pulls get-ci-logs`
-- `pulls get-ci-timing`
-- build start/status/logs/stop
+Files:
+- src/devopspilot/contracts/delivery.py
+- src/devopspilot/orchestration/delivery_loop.py
+- experiments/delivery-loop-smoke/main.py
 
-这验证 CNB 具备实现完整 SCM + CI Provider 的能力面。
+Workflow:
+- Delivery Loop / 35879543573 / success
 
-新增：
-- `src/devopspilot/adapters/cnb/client.py`
-- `docs/research/10-cnb-adapter-strategy.md`
+Verified state recovery:
 
-当前先实现 CLI transport；在 detailed CLI help 验证参数/输出后，再实现 `CNBSCMProvider` 和 `CNBCIProvider`。
+~~~text
+CHANGE_OPENED
+→ CI_PENDING
+→ CI_FAILED + logs
+→ REJECTED
+→ later CI event
+→ CI_PASSED
+→ VERIFIED
+~~~
+
+The loop is event-driven/resumable and contains no hidden background polling.
 
 ## Next
 
-1. 完成 MoMA Streaming / Tool Calling / AgentTeam / RSI live spikes。
-2. 完成 CNB CLI detailed surface。
-3. 实现 CNB SCM/CI provider mapping。
-4. 把 GitHub + CNB 都接入同一 provider contract suite。
-5. 进入第一个跨平台 Issue → PR → CI 标准化闭环。
+Implement the runtime side of TaskExecutor:
+
+~~~text
+DeliveryTask
+→ TaskProfile
+→ Complexity Gate
+→ Single DeepAgent or Dynamic AgentTeam
+→ deterministic DevOpsBench workspace
+→ code change
+→ tests
+→ commit
+→ ExecutionResult
+~~~
+
+Only after this local deterministic path is green will remote branch publication be connected to GitHub/CNB.
