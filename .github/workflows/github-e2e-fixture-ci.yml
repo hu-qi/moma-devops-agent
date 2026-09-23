@@ -1,0 +1,41 @@
+name: GitHub E2E Fixture CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: Branch containing the DevOpsPilot candidate
+        required: true
+        type: string
+      expected_sha:
+        description: Exact validated commit expected at HEAD
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - "e2e/fixtures/github_delivery/**"
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_branch || github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Verify exact commit for dispatched E2E
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "${{ inputs.expected_sha }}"
+
+      - name: Run fixture test
+        working-directory: e2e/fixtures/github_delivery
+        run: python test_app.py
