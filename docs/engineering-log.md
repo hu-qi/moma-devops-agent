@@ -383,3 +383,28 @@ Known-ineligible or unverified models are rejected before team execution.
 - Use controlled role-model ablations only among capability-qualified models.
 - Capture OpenJiuwen canonical spans into DevOpsPilot `DeliveryTrajectory`.
 - Use trajectory evidence for DevOpsBench metrics and RSI candidate generation.
+
+## First Live GitHub Delivery E2E — VERIFIED
+
+真实链路已完成：
+
+    Issue #1
+      -> MoMA + OpenJiuwen AgentTeam
+      -> constrained code change
+      -> local verification
+      -> commit fb2e70b...
+      -> branch publish
+      -> PR #2
+      -> GitHub E2E Fixture CI
+      -> run 35907083104 SUCCESS
+
+PR 仅修改 e2e/fixtures/github_delivery/app.py，一行修复；test_app.py 未修改。
+
+结果指标：
+- task_success = true
+- runtime_clean_completion = false
+- runtime_degradation_reason = agentteam_timeout
+
+GitHub Actions 内置 GITHUB_TOKEN 可 push，但当前仓库策略禁止它创建 PR；外部 GitHub control plane 使用同一 commit 完成 PR 创建。该结果进一步验证 Execution Plane 与 SCM Control Plane 的凭据应解耦。
+
+下一阶段：把真实 Delivery Trajectory 接入 RSI Candidate / DevOpsBench Evolution Gate。
