@@ -101,10 +101,10 @@ Sources:
 | Reasoning content | **LIVE VERIFIED for current model** | response contains reasoning |
 | Concrete response model metadata | **LIVE VERIFIED** | configured vs response model observed |
 | Provider performance metrics | **LIVE VERIFIED** | TTFT / generation / queue / TPS observed |
-| Streaming | SPIKE RUNNING | `MoMA Capability Spikes` |
-| Tool / Function Calling | SPIKE RUNNING | `MoMA Capability Spikes` |
-| Dynamic AgentTeam on MoMA | SPIKE RUNNING | `MoMA Capability Spikes` |
-| OpenJiuwen RSI model injection | SPIKE RUNNING | `MoMA Capability Spikes` |
+| Streaming | **LIVE VERIFIED** | 11 chunks, exact `MOMA_STREAM_OK` |
+| Tool / Function Calling | **LIVE VERIFIED** | OpenAI tool schema → `tool_calls`, `run_id=42` |
+| Dynamic AgentTeam on MoMA | **LIVE VERIFIED** | Leader dynamically formed coding + review members |
+| OpenJiuwen RSI model injection | **LIVE VERIFIED** | AutoHarnessOrchestrator constructed with MoMA-backed model |
 | Structured Output / JSON Schema | UNKNOWN | next probe |
 | Intelligent-routing request parameters | UNKNOWN | requires official/live route probe |
 | Route reason / confidence | UNKNOWN | live verify |
@@ -215,3 +215,87 @@ Validate the actual MoMA smart-routing API and returned routing metadata.
 The next risk is no longer “can MoMA connect to OpenJiuwen”; it is:
 
 > which advanced capabilities can be relied on for autonomous DevOps execution, and which belong in DevOpsPilot's own control plane?
+
+
+## 9. Extended Capability Spike Result
+
+Workflow:
+
+```text
+MoMA Capability Spikes
+run: 35877219890
+result: SUCCESS
+```
+
+### Streaming
+
+Observed:
+
+```json
+{
+  "supported": true,
+  "chunk_count": 11,
+  "text": "MOMA_STREAM_OK"
+}
+```
+
+### Tool Calling
+
+Observed:
+- `finish_reason = tool_calls`
+- function: `get_build_status`
+- arguments: `{"run_id": 42}`
+
+This verifies that an OpenAI-style function schema survives the full MoMA → OpenJiuwen model path.
+
+### Dynamic AgentTeam
+
+The runtime created a real temporary team and separate member workspaces:
+
+```text
+devops_leader
+coding-agent
+review-agent
+```
+
+Observed team task state included:
+
+```text
+coding-task → coding-agent
+review-task → review-agent (blocked by coding-task)
+```
+
+The review member produced independent LLM/tool activity at team depth 1, and team/session checkpoints completed successfully.
+
+Therefore DevOpsPilot's intended topology is now runtime-proven:
+
+```text
+MoMA
+  ↓
+OpenJiuwen TeamAgentSpec
+  ↓
+DevOps Leader
+  ├─ Coding Agent
+  └─ Review Agent
+```
+
+### RSI Runtime Injection
+
+Observed:
+- `openjiuwen.rsi` surface available
+- MoMA-backed model injected into RSI runtime
+- `AutoHarnessOrchestrator` constructed
+- `TeamEvaluator`, `MemberOptimizer`, `ProgramArtifactProvider`,
+  `SingleHarnessIterativeOptimizationOrchestrator` available
+
+No optimization candidate was promoted in this smoke by design. Real RSI optimization must be gated by DevOpsBench.
+
+### Version Metadata Note
+
+The `release/v0.1.19` Git branch is the runtime baseline used by CI, but installed package metadata currently reports `0.1.18`.
+
+DevOpsPilot records both:
+- source baseline: `release/v0.1.19`
+- runtime package metadata: currently `0.1.18`
+
+This discrepancy must not be hidden in reproducibility records.
