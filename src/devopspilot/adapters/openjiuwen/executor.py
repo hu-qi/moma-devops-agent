@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shlex
 import shutil
 import tempfile
@@ -18,6 +19,26 @@ from devopspilot.routing import AgentTeamModelPlanner, DeliveryTaskProfiler
 from devopspilot.trajectory import OpenJiuwenTrajectoryCapture
 
 from .model_router import build_team_model_routing
+
+
+def _runtime_slug(value: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip(".-")
+    return normalized or "default"
+
+
+class OpenJiuwenExecutionError(RuntimeError):
+    """Execution failed after runtime evidence became available."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        metadata: dict[str, str] | None = None,
+        test_summary: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.metadata = dict(metadata or {})
+        self.test_summary = test_summary
 
 
 def _required_env(name: str) -> str:
@@ -108,6 +129,13 @@ class OpenJiuwenTaskExecutor:
         ]
         skill_mode = workspace.metadata.get("skill_mode", "all").strip() or "all"
 
+        execution_id = _runtime_slug(
+            workspace.metadata.get("execution_id", "default")
+        )
+        team_runtime_id = (
+            f"{_runtime_slug(task.work_item.item_id)}-{execution_id}"
+        )
+
         def model_spec(model_name: str) -> dict:
             # Fallback path if model-router allocation is unavailable.
             spec = {
@@ -152,7 +180,7 @@ class OpenJiuwenTaskExecutor:
             "model_router": model_routing.model_router,
             "transport": {"type": "inprocess"},
             "storage": {"type": "memory"},
-            "team_name": f"devopspilot-exec-{task.work_item.item_id}",
+            "team_name": f"devopspilot-exec-{team_runtime_id}",
             "lifecycle": "temporary",
             "teammate_mode": "build_mode",
             "spawn_mode": "inprocess",
@@ -210,8 +238,8 @@ class OpenJiuwenTaskExecutor:
                     agent_team=spec,
                     inputs={"query": query},
                     session=(
-                        f"delivery-{task.repository.repository_id}-"
-                        f"{task.work_item.item_id}"
+                        f"delivery-{_runtime_slug(task.repository.repository_id)}-"
+                        f"{team_runtime_id}"
                     ),
                 ):
                     pass
@@ -252,6 +280,43 @@ class OpenJiuwenTaskExecutor:
             f"tool_calls={runtime_metrics['tool_calls']}"
         )
 
+        await self._clean_runtime_artifacts(workspace)
+        changed_paths = await self._validate_paths(workspace)
+        diff = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
+
+        execution_metadata = {
+            "workspace_path": str(workspace.path),
+            "base_commit": workspace.base_commit,
+            "execution_id": execution_id,
+            "leader_model": model_routing.leader_model,
+            "coding_model": model_routing.coding_model,
+            "review_model": model_routing.review_model,
+            "model_router_names": ",".join(
+                model_routing.model_router["model_names"]
+            ),
+            "changed_paths": ",".join(sorted(changed_paths)),
+            "trajectory_id": capture_result.trajectory.trajectory_id,
+            "trajectory_event_count": str(len(capture_result.trajectory.events)),
+            "model_calls": str(runtime_metrics["model_calls"]),
+            "tool_calls": str(runtime_metrics["tool_calls"]),
+            "skill_tool_calls": str(skill_tool_calls),
+            "input_tokens": str(runtime_metrics["input_tokens"]),
+            "output_tokens": str(runtime_metrics["output_tokens"]),
+            "capture_issues": str(len(capture_result.issues)),
+            "skills_dir": configured_skills_dir,
+            "enabled_skills": ",".join(enabled_skills),
+            "runtime_degraded": "true" if runtime_timed_out else "false",
+            "runtime_degradation_reason": (
+                "agentteam_timeout" if runtime_timed_out else ""
+            ),
+        }
+
+        if not diff.strip():
+            raise OpenJiuwenExecutionError(
+                "AgentTeam completed without producing a code change",
+                metadata=execution_metadata,
+            )
+
         test_command = workspace.metadata.get("test_command", "").strip()
         test_summary = ""
 
@@ -272,16 +337,12 @@ class OpenJiuwenTaskExecutor:
                 + stderr_b.decode("utf-8", errors="replace")
             )[-4000:]
             if proc.returncode != 0:
-                raise RuntimeError(
-                    f"Independent verification failed ({proc.returncode}):\n{test_summary}"
+                raise OpenJiuwenExecutionError(
+                    f"Independent verification failed ({proc.returncode}):\n{test_summary}",
+                    metadata=execution_metadata,
+                    test_summary=test_summary,
                 )
             print("DEVOPSPILOT_PHASE=verification.complete")
-
-        await self._clean_runtime_artifacts(workspace)
-        changed_paths = await self._validate_paths(workspace)
-        diff = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
-        if not diff.strip():
-            raise RuntimeError("AgentTeam completed without producing a code change")
 
         allowed = {
             x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
@@ -315,31 +376,7 @@ class OpenJiuwenTaskExecutor:
             ),
             published=False,
             test_summary=test_summary.strip(),
-            metadata={
-                "workspace_path": str(workspace.path),
-                "base_commit": workspace.base_commit,
-                "leader_model": model_routing.leader_model,
-                "coding_model": model_routing.coding_model,
-                "review_model": model_routing.review_model,
-                "model_router_names": ",".join(
-                    model_routing.model_router["model_names"]
-                ),
-                "changed_paths": ",".join(sorted(changed_paths)),
-                "trajectory_id": capture_result.trajectory.trajectory_id,
-                "trajectory_event_count": str(len(capture_result.trajectory.events)),
-                "model_calls": str(runtime_metrics["model_calls"]),
-                "tool_calls": str(runtime_metrics["tool_calls"]),
-                "skill_tool_calls": str(skill_tool_calls),
-                "input_tokens": str(runtime_metrics["input_tokens"]),
-                "output_tokens": str(runtime_metrics["output_tokens"]),
-                "capture_issues": str(len(capture_result.issues)),
-                "skills_dir": configured_skills_dir,
-                "enabled_skills": ",".join(enabled_skills),
-                "runtime_degraded": "true" if runtime_timed_out else "false",
-                "runtime_degradation_reason": (
-                    "agentteam_timeout" if runtime_timed_out else ""
-                ),
-            },
+            metadata=execution_metadata,
         )
 
     async def _clean_runtime_artifacts(
