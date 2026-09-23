@@ -11,6 +11,10 @@ on:
       - ".github/workflows/openjiuwen-task-executor.yml"
   workflow_dispatch:
 
+concurrency:
+  group: openjiuwen-task-executor-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -18,9 +22,10 @@ env:
   MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
   MOMA_MODEL: ${{ vars.MOMA_MODEL }}
   MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
-  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL }}
-  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL }}
-  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL }}
+  # Live-validated candidate defaults. Repository variables override them.
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'DeepSeek-R1-0528' }}
+  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'GLM-5.3' }}
 
 jobs:
   live-executor:
