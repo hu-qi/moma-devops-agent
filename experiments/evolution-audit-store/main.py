@@ -14,6 +14,7 @@ from devopspilot.contracts.evolution import (
     EvolutionCandidate,
     EvolutionEvidence,
     PromotionDecision,
+    TeamPatternCreationProposal,
 )
 from devopspilot.persistence import EvolutionAuditConflict, SQLiteEvolutionAuditStore
 
@@ -21,6 +22,43 @@ from devopspilot.persistence import EvolutionAuditConflict, SQLiteEvolutionAudit
 async def main() -> None:
     path = Path(tempfile.mkdtemp(prefix="devopspilot_evolution_audit_")) / "audit.db"
     store = SQLiteEvolutionAuditStore(path)
+
+    proposal = TeamPatternCreationProposal(
+        proposal_id="team-proposal-1",
+        proposal_key="devopspilot-team-runtime-agentteam-timeout",
+        reusable_guidance=(
+            "Create a reusable DevOps Team/Swarm Skill with explicit completion "
+            "and timeout handling."
+        ),
+        evidence=("trajectory-a: timeout", "trajectory-b: timeout"),
+        source_opportunity_ids=("op-a", "op-b"),
+        provider_id="openjiuwen-team-skill-create",
+        approval_payload={
+            "request_id": "team-proposal-1",
+            "questions": [{"question": "Create Team/Swarm Skill?"}],
+        },
+        production_write=False,
+    )
+    await store.save_team_pattern_proposal(proposal)
+    loaded_proposal = await store.load_team_pattern_proposal("team-proposal-1")
+    assert loaded_proposal == proposal
+
+    conflicting_proposal = TeamPatternCreationProposal(
+        proposal_id="team-proposal-1",
+        proposal_key=proposal.proposal_key,
+        reusable_guidance="different guidance under same immutable proposal id",
+        evidence=proposal.evidence,
+        source_opportunity_ids=proposal.source_opportunity_ids,
+        provider_id=proposal.provider_id,
+        approval_payload=proposal.approval_payload,
+        production_write=False,
+    )
+    try:
+        await store.save_team_pattern_proposal(conflicting_proposal)
+    except EvolutionAuditConflict:
+        pass
+    else:
+        raise AssertionError("team pattern proposal identity must be immutable")
 
     candidate = EvolutionCandidate(
         candidate_id="candidate-1",
@@ -118,6 +156,7 @@ async def main() -> None:
     else:
         raise AssertionError("candidate identity must be immutable")
 
+    print("EVOLUTION_AUDIT_TEAM_PATTERN_PROPOSAL_IMMUTABLE_OK")
     print("EVOLUTION_AUDIT_CANDIDATE_IMMUTABLE_OK")
     print("EVOLUTION_AUDIT_EVIDENCE_VERSIONED_OK")
     print("EVOLUTION_AUDIT_DECISION_VERSIONED_OK")
