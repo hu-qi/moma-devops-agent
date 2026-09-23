@@ -1,0 +1,41 @@
+name: MoMA Role Model Gate
+
+on:
+  push:
+    paths:
+      - ".github/workflows/moma-role-model-gate.yml"
+      - "experiments/moma-role-model-gate/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capability:
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - DeepSeek-R1-0528
+          - qwen2.5-coder-32b-Instruct
+          - GLM-5.3
+          - Qwen3-32B
+          - deepseek-v4.1-flash
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+      MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+      ROLE_MODEL_ID: ${{ matrix.model }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+      - name: Gate role model
+        run: python experiments/moma-role-model-gate/main.py
