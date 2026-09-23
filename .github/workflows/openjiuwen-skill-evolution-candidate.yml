@@ -11,6 +11,10 @@ on:
       - ".github/workflows/openjiuwen-skill-evolution-candidate.yml"
   workflow_dispatch:
 
+concurrency:
+  group: openjiuwen-skill-evolution-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
