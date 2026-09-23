@@ -23,6 +23,13 @@ class ApprovalState(StrEnum):
     REJECTED = "rejected"
 
 
+class OpportunityPriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 @dataclass(frozen=True, slots=True)
 class ArtifactVersion:
     artifact_id: str
@@ -44,6 +51,18 @@ class EvolutionSignalEvidence:
     source: str
     trajectory_id: str | None = None
     tool_name: str | None = None
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class EvolutionOpportunity:
+    opportunity_id: str
+    target_kind: ArtifactKind
+    objective: str
+    source_trajectory_ids: tuple[str, ...]
+    signals: tuple[EvolutionSignalEvidence, ...]
+    priority: OpportunityPriority = OpportunityPriority.MEDIUM
+    auto_candidate_allowed: bool = True
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
