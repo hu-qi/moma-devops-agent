@@ -1,0 +1,35 @@
+name: Evolution Artifact Registry
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/evolution.py"
+      - "src/devopspilot/persistence/artifact_registry.py"
+      - "src/devopspilot/persistence/__init__.py"
+      - "experiments/evolution-artifact-registry/**"
+      - ".github/workflows/evolution-artifact-registry.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/evolution.py"
+      - "src/devopspilot/persistence/artifact_registry.py"
+      - "src/devopspilot/persistence/__init__.py"
+      - "experiments/evolution-artifact-registry/**"
+      - ".github/workflows/evolution-artifact-registry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate governed artifact registry
+        env:
+          PYTHONPATH: src
+        run: python experiments/evolution-artifact-registry/main.py
