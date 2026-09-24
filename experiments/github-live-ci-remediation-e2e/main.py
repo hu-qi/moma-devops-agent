@@ -204,7 +204,7 @@ async def main() -> None:
     )
 
     base_commit = await git("rev-parse", "HEAD")
-    current_branch = os.getenv("GITHUB_REF_NAME", "").strip()
+    current_branch = (await git("branch", "--show-current")).strip()
     if current_branch and current_branch != target_branch:
         raise RuntimeError(
             f"workflow checkout branch {current_branch!r} "
