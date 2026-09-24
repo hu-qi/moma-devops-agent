@@ -1,3 +1,3 @@
 def status() -> str:
     """Return the current fixture status."""
-    return "broken"
+    return "fixed"
