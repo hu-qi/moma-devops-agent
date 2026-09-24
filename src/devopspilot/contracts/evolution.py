@@ -91,6 +91,31 @@ class TeamPatternCreationProvider(Protocol):
         ...
 
 
+
+
+
+@dataclass(frozen=True, slots=True)
+class TeamPatternCreationDecision:
+    proposal_id: str
+    state: ApprovalState
+    decided_by: str = ""
+    reason: str = ""
+
+
+@runtime_checkable
+class TeamPatternCandidateProvider(Protocol):
+    @property
+    def provider_id(self) -> str:
+        ...
+
+    async def generate_candidate(
+        self,
+        proposal: TeamPatternCreationProposal,
+        decision: TeamPatternCreationDecision,
+    ) -> EvolutionCandidate:
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class EvolutionRequest:
     request_id: str
