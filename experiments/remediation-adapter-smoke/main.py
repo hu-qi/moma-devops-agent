@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 import subprocess
 import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from devopspilot.adapters.git.existing_branch import GitExistingBranchWorkspaceProvider
+from devopspilot.adapters.github.client import GitHubHTTPClient
 from devopspilot.adapters.openjiuwen.remediation import OpenJiuwenRemediationExecutor
 from devopspilot.contracts.delivery import (
     DeliveryPhase,
@@ -134,12 +137,75 @@ async def remediation_contract() -> None:
     assert inner.task.metadata["allowed_paths"] == "app.py"
 
 
+
+
+async def cross_origin_log_redirect_contract() -> None:
+    storage_headers: dict[str, str | None] = {}
+
+    class StorageHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            storage_headers["authorization"] = self.headers.get("Authorization")
+            if storage_headers["authorization"]:
+                self.send_response(401)
+                self.end_headers()
+                return
+            payload = b"fixture log payload"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, *_args) -> None:
+            return None
+
+    storage = ThreadingHTTPServer(("127.0.0.1", 0), StorageHandler)
+    storage_port = storage.server_address[1]
+
+    class GitHubHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            assert self.headers.get("Authorization") == "Bearer test-token"
+            self.send_response(302)
+            self.send_header(
+                "Location",
+                f"http://127.0.0.1:{storage_port}/signed-log",
+            )
+            self.end_headers()
+
+        def log_message(self, *_args) -> None:
+            return None
+
+    github = ThreadingHTTPServer(("127.0.0.1", 0), GitHubHandler)
+    github_port = github.server_address[1]
+    threads = [
+        threading.Thread(target=storage.serve_forever, daemon=True),
+        threading.Thread(target=github.serve_forever, daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+
+    try:
+        client = GitHubHTTPClient(
+            token="test-token",
+            api_base=f"http://127.0.0.1:{github_port}",
+        )
+        payload = await client.request_bytes("GET", "/logs")
+        assert payload == b"fixture log payload"
+        assert storage_headers["authorization"] is None
+    finally:
+        github.shutdown()
+        storage.shutdown()
+        github.server_close()
+        storage.server_close()
+
+
 async def main() -> None:
     await workspace_contract()
     await remediation_contract()
+    await cross_origin_log_redirect_contract()
     print("REMEDIATION_EXISTING_BRANCH_WORKSPACE_OK")
     print("REMEDIATION_AGENT_CONTEXT_OK")
     print("REMEDIATION_SOURCE_BRANCH_IDENTITY_OK")
+    print("GITHUB_CROSS_ORIGIN_LOG_REDIRECT_OK")
 
 
 if __name__ == "__main__":
