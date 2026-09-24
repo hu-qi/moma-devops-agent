@@ -64,6 +64,7 @@ async def main() -> None:
             input_tokens=3000,
             output_tokens=800,
             duration_ms=9000,
+            runtime_clean_completion=False,
         ),
         BenchmarkObservation(
             case_id="ci.python.dependency_resolution.001",
@@ -72,6 +73,7 @@ async def main() -> None:
             input_tokens=2500,
             output_tokens=700,
             duration_ms=7000,
+            runtime_clean_completion=True,
         ),
     )
     candidate_results = (
@@ -82,6 +84,7 @@ async def main() -> None:
             input_tokens=1800,
             output_tokens=500,
             duration_ms=5000,
+            runtime_clean_completion=True,
         ),
         BenchmarkObservation(
             case_id="ci.python.dependency_resolution.001",
@@ -90,6 +93,7 @@ async def main() -> None:
             input_tokens=2100,
             output_tokens=600,
             duration_ms=6000,
+            runtime_clean_completion=True,
         ),
     )
 
@@ -101,6 +105,7 @@ async def main() -> None:
     )
     assert evidence.gate_passed is True
     assert "task_success" in evidence.improved_metrics
+    assert "runtime_clean_completion" in evidence.improved_metrics
     assert not evidence.regressions
 
     decision = engine.await_human_approval(
