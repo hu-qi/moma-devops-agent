@@ -154,17 +154,22 @@ async def wait_fixture_run(
     for attempt in range(1, attempts + 1):
         data = await client.request_json(
             "GET",
-            (
-                f"/repos/{repository_name}/actions/workflows/"
-                "ci-remediation-fixture-ci.yml/runs"
-            ),
+            f"/repos/{repository_name}/actions/runs",
             query={
                 "head_sha": commit_sha,
                 "event": "pull_request",
-                "per_page": 10,
+                "per_page": 100,
             },
         )
-        runs = data.get("workflow_runs", [])
+        runs = [
+            item
+            for item in data.get("workflow_runs", [])
+            if (
+                item.get("name") == "CI Remediation Fixture CI"
+                or item.get("path")
+                == ".github/workflows/ci-remediation-fixture-ci.yml"
+            )
+        ]
         if runs:
             item = runs[0]
             if item.get("status") == "completed":
@@ -187,6 +192,54 @@ async def wait_fixture_run(
     )
 
 
+async def find_external_change_request(
+    client: GitHubHTTPClient,
+    scm: GitHubSCMProvider,
+    repository_name: str,
+    repository,
+    *,
+    issue_number: str,
+    target_branch: str,
+):
+    """Discover the candidate PR created by the external SCM control plane."""
+
+    data = await client.request_json(
+        "GET",
+        f"/repos/{repository_name}/pulls",
+        query={
+            "state": "open",
+            "base": target_branch,
+            "per_page": 100,
+        },
+    )
+    issue_marker = f"Source issue: #{issue_number}"
+    candidates = [
+        item
+        for item in data
+        if (
+            str(item.get("title", "")).startswith("[Remediation E2E]")
+            and issue_marker in str(item.get("body") or "")
+        )
+    ]
+    if not candidates:
+        raise RuntimeError(
+            "No externally-created remediation E2E PR found. "
+            "SCM control plane must create the candidate PR before "
+            "the AgentTeam remediation runner starts."
+        )
+    item = max(candidates, key=lambda value: int(value["number"]))
+    head = item.get("head") or {}
+    source_branch = str(head.get("ref") or "")
+    candidate_sha = str(head.get("sha") or "")
+    if not source_branch or not candidate_sha:
+        raise RuntimeError("Controlled remediation PR has no usable head ref/SHA")
+    change = await scm.get_change_request(
+        repository,
+        str(item["number"]),
+    )
+    return change, source_branch, candidate_sha
+
+
 async def main() -> None:
     repository_name = required("GITHUB_REPOSITORY")
     issue_number = required("DEVOPSPILOT_E2E_ISSUE")
@@ -203,7 +256,6 @@ async def main() -> None:
         issue_number,
     )
 
-    base_commit = await git("rev-parse", "HEAD")
     current_branch = (await git("branch", "--show-current")).strip()
     if current_branch and current_branch != target_branch:
         raise RuntimeError(
@@ -217,12 +269,18 @@ async def main() -> None:
             "CI remediation fixture base is not in broken state"
         )
 
-    source_branch = (
-        f"devopspilot/remediation-e2e-{issue_number}-{run_id}"
+    change, source_branch, candidate_sha = await find_external_change_request(
+        client,
+        scm,
+        repository_name,
+        repository,
+        issue_number=issue_number,
+        target_branch=target_branch,
     )
-    candidate_sha = await publish_failing_candidate(
-        source_branch=source_branch,
-        base_commit=base_commit,
+    print(
+        "DEVOPSPILOT_REMEDIATION_EXTERNAL_PR "
+        f"pr={change.change_id} branch={source_branch} "
+        f"candidate={candidate_sha}"
     )
 
     task = DeliveryTask(
@@ -254,20 +312,6 @@ async def main() -> None:
         ),
         published=True,
     )
-    change = await scm.create_change_request(
-        repository,
-        title=f"[Remediation E2E] {work_item.title}",
-        body=(
-            "## Controlled CI-remediation candidate\n\n"
-            f"Source issue: #{issue_number}\n"
-            f"Candidate commit: `{candidate_sha}`\n\n"
-            "This PR is intentionally expected to fail its "
-            "first fixture CI run. DevOpsPilot must repair "
-            "the same source branch and make the next run pass."
-        ),
-        source_branch=source_branch,
-        target_branch=target_branch,
-    )
     await scm.add_comment(
         CommentSubjectRef(
             repository,
@@ -275,9 +319,10 @@ async def main() -> None:
             CommentSubjectKind.WORK_ITEM,
         ),
         body=(
-            "DevOpsPilot remediation E2E opened "
-            f"PR #{change.change_id} with intentional "
-            f"failing candidate `{candidate_sha}`."
+            "DevOpsPilot attached to externally-created remediation "
+            f"PR #{change.change_id}; initial candidate "
+            f"`{candidate_sha}` will now be observed and repaired "
+            "on the same source branch."
         ),
     )
 
