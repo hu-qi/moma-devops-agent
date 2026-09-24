@@ -170,6 +170,15 @@ class PromotionDecision:
     reason: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class RollbackDecision:
+    artifact_id: str
+    target_version: str
+    state: ApprovalState
+    decided_by: str
+    reason: str = ""
+
+
 @runtime_checkable
 class EvolutionProvider(Protocol):
     @property
