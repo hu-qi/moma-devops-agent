@@ -21,7 +21,7 @@ env:
   MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
   MOMA_MODEL: ${{ vars.MOMA_MODEL }}
   MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
-  MOMA_EVOLUTION_MODEL: ${{ vars.MOMA_EVOLUTION_MODEL || vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  MOMA_EVOLUTION_MODEL: ${{ vars.MOMA_EVOLUTION_MODEL || vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
   JIUWENSWARM_CREATOR_REF: "6ab1ed59a8c455cdb9dfe45db34a3a8d42c10d47"
   JIUWENSWARM_CREATOR_ROOT: "_external/jiuwenswarm/jiuwenswarm/resources/agent/workspace/skills/swarmskill-creator"
 
