@@ -309,15 +309,22 @@ class SQLiteEvolutionAuditStore:
             "evolution_decision",
         }:
             raise ValueError(f"unsupported audit table: {table}")
+        key_column = (
+            "proposal_id"
+            if table == "team_pattern_proposal_decision"
+            else "candidate_id"
+        )
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
-                f"SELECT MAX(version) AS version FROM {table} WHERE candidate_id = ?",
+                f"SELECT MAX(version) AS version FROM {table} "
+                f"WHERE {key_column} = ?",
                 (candidate_id,),
             ).fetchone()
             version = int(row["version"] or 0) + 1
             db.execute(
-                f"INSERT INTO {table}(candidate_id, version, payload) VALUES (?, ?, ?)",
+                f"INSERT INTO {table}({key_column}, version, payload) "
+                "VALUES (?, ?, ?)",
                 (candidate_id, version, payload),
             )
         return version
@@ -329,10 +336,15 @@ class SQLiteEvolutionAuditStore:
             "evolution_decision",
         }:
             raise ValueError(f"unsupported audit table: {table}")
+        key_column = (
+            "proposal_id"
+            if table == "team_pattern_proposal_decision"
+            else "candidate_id"
+        )
         with self._connect() as db:
             return db.execute(
                 f"SELECT version, payload FROM {table} "
-                "WHERE candidate_id = ? ORDER BY version DESC LIMIT 1",
+                f"WHERE {key_column} = ? ORDER BY version DESC LIMIT 1",
                 (candidate_id,),
             ).fetchone()
 
