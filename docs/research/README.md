@@ -17,7 +17,42 @@
 11. [09-moma-model-config.md](./09-moma-model-config.md) — bootstrap model vs capability routing
 12. [10-cnb-adapter-strategy.md](./10-cnb-adapter-strategy.md) — CNB adapter transport strategy
 13. [11-cnb-openapi-contract-mapping.md](./11-cnb-openapi-contract-mapping.md) — CNB Swagger → DevOpsPilot contracts
-14. [12-delivery-loop.md](./12-delivery-loop.md) — first provider-neutral product delivery loop
+14. [12-delivery-loop.md](./12-delivery-loop.md) — provider-neutral delivery loop
+15. [13-moma-role-model-matrix.md](./13-moma-role-model-matrix.md) — live model Tool Calling qualification
+16. [14-role-model-ablation.md](./14-role-model-ablation.md) — qualified role-model comparison plan/results
+17. [15-model-vs-runtime-failure-analysis.md](./15-model-vs-runtime-failure-analysis.md) — model capability vs AgentTeam lifecycle failures
+18. [15-openjiuwen-trajectory-bridge.md](./15-openjiuwen-trajectory-bridge.md) — OpenJiuwen runtime evidence → canonical trajectory
+19. [16-openjiuwen-agentteam-lifecycle-reproducer.md](./16-openjiuwen-agentteam-lifecycle-reproducer.md) — AgentTeam stream/lifecycle reproducer
+20. [16-openjiuwen-agentteam-termination-pattern.md](./16-openjiuwen-agentteam-termination-pattern.md) — bounded termination strategy
+21. [17-full-delivery-pipeline-integration.md](./17-full-delivery-pipeline-integration.md) — execute → publish → change request → CI → verify
+22. [18-live-github-delivery-e2e.md](./18-live-github-delivery-e2e.md) — real Issue → AgentTeam → PR → Actions evidence
+23. [19-openjiuwen-skill-evolution-candidate.md](./19-openjiuwen-skill-evolution-candidate.md) — Skill evolution candidate generation
+24. [20-delivery-evolution-opportunity-routing.md](./20-delivery-evolution-opportunity-routing.md) — trajectory/opportunity mining
+25. [21-team-pattern-swarm-skill-proposal.md](./21-team-pattern-swarm-skill-proposal.md) — repeated AgentTeam timeout → governed Team Pattern proposal
+26. [22-governed-swarm-skill-candidate.md](./22-governed-swarm-skill-candidate.md) — proposal approval → sandbox creator → official validator
+27. [23-team-pattern-devopsbench-ab.md](./23-team-pattern-devopsbench-ab.md) — baseline vs candidate Team/Swarm Skill evaluation
+28. [24-governed-artifact-registry.md](./24-governed-artifact-registry.md) — staged → approved activation → rollback/deactivate
+
+## Current Evolution Boundary
+
+The real repeated-timeout Team Pattern proposal remains **PENDING_HUMAN**.
+
+Current live candidate-generation and A/B infrastructure uses only a **synthetic approval** to verify the mechanism:
+
+~~~text
+real evidence
+  → real proposal
+  → PENDING_HUMAN   (unchanged)
+
+synthetic approved proposal
+  → sandbox candidate
+  → official validator
+  → DevOpsBench A/B
+  → RegressionGate
+  → REJECTED or PENDING_HUMAN
+~~~
+
+No synthetic approval may be interpreted as approval of the real proposal, and no candidate is allowed to mutate production Skills automatically.
 
 ## Evidence Rule
 
@@ -42,6 +77,12 @@ Core Contract / PRD Decision
 Implementation
       ↓
 DevOpsBench
+      ↓
+RegressionGate
+      ↓
+Human Approval
+      ↓
+Artifact Registry
 ~~~
 
 重大技术决策回写 PRD/00-decisions.md；实现代码不得绕过已冻结的 Core Contracts。
