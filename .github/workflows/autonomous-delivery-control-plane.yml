@@ -7,7 +7,10 @@ on:
       - "src/devopspilot/orchestration/control_plane.py"
       - "src/devopspilot/orchestration/control_plane_service.py"
       - "src/devopspilot/persistence/remediation_ledger.py"
+      - "src/devopspilot/adapters/git/existing_branch.py"
+      - "src/devopspilot/adapters/openjiuwen/remediation.py"
       - "experiments/autonomous-control-plane-smoke/**"
+      - "experiments/remediation-adapter-smoke/**"
       - ".github/workflows/autonomous-delivery-control-plane.yml"
   pull_request:
     paths:
@@ -15,7 +18,10 @@ on:
       - "src/devopspilot/orchestration/control_plane.py"
       - "src/devopspilot/orchestration/control_plane_service.py"
       - "src/devopspilot/persistence/remediation_ledger.py"
+      - "src/devopspilot/adapters/git/existing_branch.py"
+      - "src/devopspilot/adapters/openjiuwen/remediation.py"
       - "experiments/autonomous-control-plane-smoke/**"
+      - "experiments/remediation-adapter-smoke/**"
       - ".github/workflows/autonomous-delivery-control-plane.yml"
   workflow_dispatch:
 
@@ -35,3 +41,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: python experiments/autonomous-control-plane-smoke/main.py
+      - name: Validate same-branch remediation adapters
+        env:
+          PYTHONPATH: src
+        run: python experiments/remediation-adapter-smoke/main.py
