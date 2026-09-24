@@ -14,6 +14,7 @@ from devopspilot.contracts.evolution import (
     EvolutionCandidate,
     EvolutionEvidence,
     PromotionDecision,
+    TeamPatternCreationDecision,
     TeamPatternCreationProposal,
 )
 from devopspilot.persistence import EvolutionAuditConflict, SQLiteEvolutionAuditStore
@@ -42,6 +43,22 @@ async def main() -> None:
     await store.save_team_pattern_proposal(proposal)
     loaded_proposal = await store.load_team_pattern_proposal("team-proposal-1")
     assert loaded_proposal == proposal
+
+    creation_decision = TeamPatternCreationDecision(
+        proposal_id=proposal.proposal_id,
+        state=ApprovalState.APPROVED,
+        decided_by="audit-smoke",
+        reason="Exercise versioned proposal approval persistence.",
+    )
+    cd1 = await store.append_team_pattern_creation_decision(creation_decision)
+    cd2 = await store.append_team_pattern_creation_decision(creation_decision)
+    assert (cd1.version, cd2.version) == (1, 2)
+    latest_creation_decision = (
+        await store.load_latest_team_pattern_creation_decision(proposal.proposal_id)
+    )
+    assert latest_creation_decision is not None
+    assert latest_creation_decision.version == 2
+    assert latest_creation_decision.decision == creation_decision
 
     conflicting_proposal = TeamPatternCreationProposal(
         proposal_id="team-proposal-1",
@@ -157,6 +174,7 @@ async def main() -> None:
         raise AssertionError("candidate identity must be immutable")
 
     print("EVOLUTION_AUDIT_TEAM_PATTERN_PROPOSAL_IMMUTABLE_OK")
+    print("EVOLUTION_AUDIT_TEAM_PATTERN_DECISION_VERSIONED_OK")
     print("EVOLUTION_AUDIT_CANDIDATE_IMMUTABLE_OK")
     print("EVOLUTION_AUDIT_EVIDENCE_VERSIONED_OK")
     print("EVOLUTION_AUDIT_DECISION_VERSIONED_OK")
