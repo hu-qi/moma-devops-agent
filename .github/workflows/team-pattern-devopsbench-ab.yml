@@ -2,6 +2,10 @@ name: Team Pattern DevOpsBench A-B
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "experiments/team-pattern-devopsbench-ab/**"
+      - ".github/workflows/team-pattern-devopsbench-ab.yml"
 
 concurrency:
   group: team-pattern-devopsbench-ab-${{ github.ref }}
@@ -22,7 +26,19 @@ env:
   JIUWENSWARM_CREATOR_ROOT: "_external/jiuwenswarm/jiuwenswarm/resources/agent/workspace/skills/swarmskill-creator"
 
 jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile A-B experiment
+        run: python -m py_compile experiments/team-pattern-devopsbench-ab/main.py
+
   ablation:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
