@@ -265,10 +265,31 @@ AUTHORITATIVE CREATOR SPEC:
 {creator_spec}
 """.strip()
 
-        response = await model.invoke(
-            messages=[{"role": "user", "content": prompt}],
-            tools=[tool],
+        creator_timeout = float(
+            os.getenv("DEVOPSPILOT_SWARM_CREATOR_TIMEOUT", "180")
         )
+        creator_max_tokens = int(
+            os.getenv("DEVOPSPILOT_SWARM_CREATOR_MAX_TOKENS", "12000")
+        )
+        try:
+            async with asyncio.timeout(creator_timeout):
+                response = await model.invoke(
+                    messages=[{"role": "user", "content": prompt}],
+                    tools=[tool],
+                    tool_choice={
+                        "type": "function",
+                        "function": {
+                            "name": "emit_swarm_skill_candidate",
+                        },
+                    },
+                    max_tokens=creator_max_tokens,
+                    timeout=creator_timeout,
+                )
+        except TimeoutError as exc:
+            raise RuntimeError(
+                "Swarm Skill creator model exceeded bounded generation timeout "
+                f"({creator_timeout}s)"
+            ) from exc
         calls = [
             call for call in (response.tool_calls or [])
             if getattr(call, "name", "") == "emit_swarm_skill_candidate"
