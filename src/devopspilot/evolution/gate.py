@@ -57,6 +57,13 @@ class RegressionGate:
         ):
             improvements.append("task_success")
 
+        if sum(
+            x.runtime_clean_completion is True for x in target_after
+        ) > sum(
+            x.runtime_clean_completion is True for x in target_before
+        ):
+            improvements.append("runtime_clean_completion")
+
         for name in ("tool_calls", "input_tokens", "output_tokens"):
             before_total = sum(getattr(x, name) for x in target_before)
             after_total = sum(getattr(x, name) for x in target_after)
