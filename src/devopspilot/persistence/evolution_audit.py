@@ -17,6 +17,7 @@ from devopspilot.contracts.evolution import (
     EvolutionCandidate,
     EvolutionEvidence,
     PromotionDecision,
+    TeamPatternCreationDecision,
     TeamPatternCreationProposal,
 )
 
@@ -37,6 +38,13 @@ class StoredPromotionDecision:
     candidate_id: str
     version: int
     decision: PromotionDecision
+
+
+@dataclass(frozen=True, slots=True)
+class StoredTeamPatternCreationDecision:
+    proposal_id: str
+    version: int
+    decision: TeamPatternCreationDecision
 
 
 class SQLiteEvolutionAuditStore:
@@ -67,6 +75,13 @@ class SQLiteEvolutionAuditStore:
                 CREATE TABLE IF NOT EXISTS team_pattern_proposal (
                     proposal_id TEXT PRIMARY KEY,
                     payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS team_pattern_proposal_decision (
+                    proposal_id TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    payload TEXT NOT NULL,
+                    PRIMARY KEY(proposal_id, version)
                 );
 
                 CREATE TABLE IF NOT EXISTS evolution_evidence (
@@ -138,6 +153,54 @@ class SQLiteEvolutionAuditStore:
         if row is None:
             return None
         return _decode_team_pattern_proposal(json.loads(row["payload"]))
+
+    async def append_team_pattern_creation_decision(
+        self,
+        decision: TeamPatternCreationDecision,
+    ) -> StoredTeamPatternCreationDecision:
+        proposal = await self.load_team_pattern_proposal(decision.proposal_id)
+        if proposal is None:
+            raise EvolutionAuditConflict(
+                f"unknown team pattern proposal {decision.proposal_id!r}"
+            )
+        return await asyncio.to_thread(
+            self._append_team_pattern_creation_decision_sync,
+            decision,
+        )
+
+    def _append_team_pattern_creation_decision_sync(
+        self,
+        decision: TeamPatternCreationDecision,
+    ) -> StoredTeamPatternCreationDecision:
+        version = self._append_versioned(
+            table="team_pattern_proposal_decision",
+            candidate_id=decision.proposal_id,
+            payload=_json(_encode_team_pattern_creation_decision(decision)),
+        )
+        return StoredTeamPatternCreationDecision(
+            proposal_id=decision.proposal_id,
+            version=version,
+            decision=decision,
+        )
+
+    async def load_latest_team_pattern_creation_decision(
+        self,
+        proposal_id: str,
+    ) -> StoredTeamPatternCreationDecision | None:
+        row = await asyncio.to_thread(
+            self._load_latest_sync,
+            "team_pattern_proposal_decision",
+            proposal_id,
+        )
+        if row is None:
+            return None
+        return StoredTeamPatternCreationDecision(
+            proposal_id=proposal_id,
+            version=int(row["version"]),
+            decision=_decode_team_pattern_creation_decision(
+                json.loads(row["payload"])
+            ),
+        )
 
     async def save_candidate(self, candidate: EvolutionCandidate) -> EvolutionCandidate:
         return await asyncio.to_thread(self._save_candidate_sync, candidate)
@@ -240,7 +303,11 @@ class SQLiteEvolutionAuditStore:
         )
 
     def _append_versioned(self, *, table: str, candidate_id: str, payload: str) -> int:
-        if table not in {"evolution_evidence", "evolution_decision"}:
+        if table not in {
+            "team_pattern_proposal_decision",
+            "evolution_evidence",
+            "evolution_decision",
+        }:
             raise ValueError(f"unsupported audit table: {table}")
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -256,7 +323,11 @@ class SQLiteEvolutionAuditStore:
         return version
 
     def _load_latest_sync(self, table: str, candidate_id: str) -> sqlite3.Row | None:
-        if table not in {"evolution_evidence", "evolution_decision"}:
+        if table not in {
+            "team_pattern_proposal_decision",
+            "evolution_evidence",
+            "evolution_decision",
+        }:
             raise ValueError(f"unsupported audit table: {table}")
         with self._connect() as db:
             return db.execute(
@@ -317,6 +388,28 @@ def _decode_team_pattern_proposal(
         provider_id=value["provider_id"],
         approval_payload=value.get("approval_payload", {}),
         production_write=bool(value.get("production_write", False)),
+    )
+
+
+def _encode_team_pattern_creation_decision(
+    value: TeamPatternCreationDecision,
+) -> dict[str, Any]:
+    return {
+        "proposal_id": value.proposal_id,
+        "state": value.state.value,
+        "decided_by": value.decided_by,
+        "reason": value.reason,
+    }
+
+
+def _decode_team_pattern_creation_decision(
+    value: dict[str, Any],
+) -> TeamPatternCreationDecision:
+    return TeamPatternCreationDecision(
+        proposal_id=value["proposal_id"],
+        state=ApprovalState(value["state"]),
+        decided_by=value.get("decided_by", ""),
+        reason=value.get("reason", ""),
     )
 
 
