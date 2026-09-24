@@ -1,4 +1,4 @@
-"""Live GitHub CI failure -> AgentTeam remediation -> same PR -> green CI E2E."""
+"""Live GitHub CI failure -> resume existing PR -> AgentTeam remediation -> green CI."""
 
 from __future__ import annotations
 
