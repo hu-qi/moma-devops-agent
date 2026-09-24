@@ -173,7 +173,7 @@ class PromotionDecision:
 @dataclass(frozen=True, slots=True)
 class RollbackDecision:
     artifact_id: str
-    target_version: str
+    target_version: str | None
     state: ApprovalState
     decided_by: str
     reason: str = ""
