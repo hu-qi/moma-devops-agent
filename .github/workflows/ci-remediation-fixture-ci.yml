@@ -1,0 +1,27 @@
+name: CI Remediation Fixture CI
+
+on:
+  pull_request:
+    branches:
+      - devopspilot/autonomous-delivery-control-plane
+      - devopspilot/fixture-ci-remediation
+    paths:
+      - "e2e/fixtures/ci_remediation/**"
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run remediation fixture test
+        working-directory: e2e/fixtures/ci_remediation
+        run: python test_app.py
