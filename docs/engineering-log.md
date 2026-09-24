@@ -431,3 +431,112 @@ SQLiteEvolutionAuditStore 已支持 immutable TeamPatternCreationProposal，run 
 官方 swarmskill-creator 已定位于 openJiuwen-ai/jiuwenswarm；后续作为外部 creator 依赖在沙箱生成候选，不复制进 DevOpsPilot 仓库。
 
 当前停在显式人工审批门：只有用户批准后才生成 Swarm Skill candidate；仍需 DevOpsBench + RegressionGate 后才能进入 promotion。
+
+## 2026-09-24 — Governed Evolution Infrastructure
+
+### Real GitHub Delivery Evidence
+
+The controlled live GitHub delivery path is verified through the exact Agent-produced commit:
+
+~~~text
+Issue #1
+  → MoMA + OpenJiuwen AgentTeam
+  → constrained edit
+  → independent test
+  → commit fb2e70b74f16859afa5ee2f015ef9e8c864353fb
+  → branch devopspilot/e2e-1-35906483773
+  → PR #2
+  → GitHub E2E Fixture CI
+  → SUCCESS
+~~~
+
+The repository policy still prevents the built-in GITHUB_TOKEN from creating a
+PR directly. This is a credential/control-plane policy issue, not a delivery
+execution failure.
+
+### Team Pattern Opportunity
+
+Repeated task-correct trajectories with AgentTeam shutdown timeout produced the
+real OpenJiuwen TeamSkillCreateRail proposal:
+
+~~~text
+team_skill_evolve_create_0a84bf96ac624bf0b30fd755417088c5
+~~~
+
+The real proposal remains **PENDING_HUMAN** and has not been approved.
+
+Synthetic approval is used only to validate candidate-generation infrastructure.
+
+### Governed Candidate Creation
+
+JiuwenSwarm swarmskill-creator is consumed as a pinned external dependency:
+
+~~~text
+openJiuwen-ai/jiuwenswarm
+commit 6ab1ed59a8c455cdb9dfe45db34a3a8d42c10d47
+~~~
+
+The first monolithic creator experiment proved an important limitation:
+
+~~~text
+GLM-5.3
+max_tokens=12000
+finish_reason=length
+tool_calls=None
+~~~
+
+The model correctly reasoned through the complete seven-file Swarm Skill, but
+spent the output budget before emitting the giant structured tool call.
+
+Creator V2 therefore uses staged per-file structured generation with official
+file-specific JiuwenSwarm templates and one final official validator pass.
+
+### RegressionGate
+
+runtime_clean_completion now participates in positive improvement detection.
+
+A Team Pattern candidate may therefore prove:
+
+~~~text
+task_success: true → true
+runtime_clean_completion: false → true
+~~~
+
+without relaxing any task-success guardrail.
+
+### Artifact Registry — CI VERIFIED
+
+SQLiteArtifactRegistry provides:
+- immutable artifact versions;
+- candidate staging;
+- APPROVED + gate-passed promotion only;
+- active-version pointer;
+- append-only activation history;
+- human-approved rollback to a prior version;
+- deactivate rollback for newly created Team Pattern artifacts.
+
+Latest Evolution Artifact Registry CI: **SUCCESS**.
+
+The registry is control-plane state only. It does not write production Skills.
+
+### Team Pattern A/B
+
+A manual-only live A/B harness is prepared:
+
+~~~text
+baseline:
+  current dynamic Leader → Coding → Review
+
+candidate:
+  same task / models / runtime
+  + validated Swarm Skill mounted through OpenJiuwen skill_use rail
+~~~
+
+Primary target:
+- runtime_clean_completion improvement
+
+Hard guardrail:
+- task_success must not regress
+
+Even a passing automated gate produces only **PENDING_HUMAN**, never automatic
+production approval.
