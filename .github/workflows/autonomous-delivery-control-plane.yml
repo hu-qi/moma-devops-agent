@@ -1,0 +1,37 @@
+name: Autonomous Delivery Control Plane
+
+on:
+  push:
+    paths:
+      - "src/devopspilot/contracts/remediation.py"
+      - "src/devopspilot/orchestration/control_plane.py"
+      - "src/devopspilot/orchestration/control_plane_service.py"
+      - "src/devopspilot/persistence/remediation_ledger.py"
+      - "experiments/autonomous-control-plane-smoke/**"
+      - ".github/workflows/autonomous-delivery-control-plane.yml"
+  pull_request:
+    paths:
+      - "src/devopspilot/contracts/remediation.py"
+      - "src/devopspilot/orchestration/control_plane.py"
+      - "src/devopspilot/orchestration/control_plane_service.py"
+      - "src/devopspilot/persistence/remediation_ledger.py"
+      - "experiments/autonomous-control-plane-smoke/**"
+      - ".github/workflows/autonomous-delivery-control-plane.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  control-plane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate bounded durable CI remediation
+        env:
+          PYTHONPATH: src
+        run: python experiments/autonomous-control-plane-smoke/main.py
