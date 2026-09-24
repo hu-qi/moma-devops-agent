@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: swarm-skill-candidate-${{ github.ref }}
+  group: swarm-skill-candidate-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
