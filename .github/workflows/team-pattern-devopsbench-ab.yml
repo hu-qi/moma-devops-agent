@@ -1,0 +1,65 @@
+name: Team Pattern DevOpsBench A-B
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: team-pattern-devopsbench-ab-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+  MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+  MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
+  MOMA_EVOLUTION_MODEL: ${{ vars.MOMA_EVOLUTION_MODEL || vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  JIUWENSWARM_CREATOR_REF: "6ab1ed59a8c455cdb9dfe45db34a3a8d42c10d47"
+  JIUWENSWARM_CREATOR_ROOT: "_external/jiuwenswarm/jiuwenswarm/resources/agent/workspace/skills/swarmskill-creator"
+
+jobs:
+  ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout pinned JiuwenSwarm creator dependency
+        uses: actions/checkout@v4
+        with:
+          repository: openJiuwen-ai/jiuwenswarm
+          ref: ${{ env.JIUWENSWARM_CREATOR_REF }}
+          path: _external/jiuwenswarm
+          sparse-checkout: |
+            jiuwenswarm/resources/agent/workspace/skills/swarmskill-creator
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+          python -m pip install "pyyaml>=6,<7"
+
+      - name: Run baseline versus Swarm Skill candidate
+        env:
+          PYTHONPATH: src
+        run: python experiments/team-pattern-devopsbench-ab/main.py
+
+      - name: Prove production Skills are unchanged
+        run: git diff --exit-code -- skills/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-pattern-devopsbench-ab
+          path: |
+            artifacts/team-pattern-devopsbench-ab.json
+            artifacts/team-pattern-ab-audit.sqlite3
+          if-no-files-found: error
