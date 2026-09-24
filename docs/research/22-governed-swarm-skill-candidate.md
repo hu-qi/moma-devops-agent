@@ -53,3 +53,61 @@ A failed official validator means no EvolutionCandidate is returned.
 A PENDING_HUMAN or REJECTED proposal raises before any model call.
 
 The CI experiment uses only a synthetic APPROVED proposal to verify infrastructure. The real proposal from repeated AgentTeam timeout evidence is not automatically approved.
+
+
+## Creator Failure Evidence and V2 Strategy
+
+The first live creator implementation asked one MoMA model call to emit the entire
+seven-file Swarm Skill bundle through one structured tool call.
+
+Live evidence showed this is the wrong artifact-generation shape:
+
+- model: GLM-5.3
+- max_tokens: 12000
+- result: finish_reason=length
+- tool_calls: none
+- content: none
+- reasoning_content: the model correctly planned the complete Swarm Skill, but
+  exhausted the output budget before it reached the structured tool call.
+
+This is not a JiuwenSwarm validator failure and not a MoMA connectivity failure.
+
+DevOpsPilot V2 candidate creation therefore uses staged composition:
+
+~~~text
+approved proposal
+      ↓
+fixed candidate identity + role manifest
+      ↓
+SKILL.md          ┐
+roles/leader.md   │
+roles/coding.md   │  bounded structured calls
+roles/review.md   ├─────────────────────────┐
+workflow.md       │                         │
+bind.md           ┘                         │
+dependencies.yaml = deterministic sandbox  │
+                                            ↓
+                                   canonical bundle
+                                            ↓
+                              official JiuwenSwarm validator
+                                            ↓
+                                  EvolutionCandidate
+~~~
+
+Each model call receives only the relevant official JiuwenSwarm template and a
+small set of cross-file invariants. This reduces token pressure and localizes
+generation failures to one file.
+
+The sandbox V1 dependency manifest is deliberately deterministic:
+
+~~~yaml
+skills: []
+tools: []
+~~~
+
+This prevents cross-file dependency hallucination while evaluating the Team
+Pattern itself. Dependency enrichment is a separate governed step and is not
+part of the first runtime-completion hypothesis.
+
+The real repeated-timeout Team Pattern proposal remains PENDING_HUMAN. Staged
+generation is currently exercised only with a synthetic approval.
