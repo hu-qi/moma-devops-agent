@@ -344,6 +344,14 @@ class OpenJiuwenTaskExecutor:
                 )
             print("DEVOPSPILOT_PHASE=verification.complete")
 
+        # Verification commands can create interpreter/test caches or, more
+        # importantly, mutate repository files after the pre-test path gate.
+        # Remove only known ephemeral artifacts, then enforce the path policy
+        # again so the commit/publisher observes a clean, still-constrained
+        # workspace.
+        await self._clean_runtime_artifacts(workspace)
+        changed_paths = await self._validate_paths(workspace)
+
         allowed = {
             x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
         }
