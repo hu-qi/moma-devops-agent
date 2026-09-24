@@ -10,6 +10,10 @@ on:
       - ".github/workflows/swarm-skill-candidate.yml"
   workflow_dispatch:
 
+concurrency:
+  group: swarm-skill-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
