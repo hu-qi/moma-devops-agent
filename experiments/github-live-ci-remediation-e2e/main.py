@@ -364,7 +364,7 @@ async def main() -> None:
     agent_executor = OpenJiuwenTaskExecutor(
         workspace_provider,
         max_iterations=24,
-        completion_timeout=180.0,
+        completion_timeout=240.0,
     )
     publishing_executor = PublishingTaskExecutor(
         agent_executor,
@@ -507,7 +507,20 @@ async def main() -> None:
         "GITHUB_LIVE_REMEDIATION_CI_RECOVERED_OK"
     )
     print("GITHUB_LIVE_REMEDIATION_VERIFIED_OK")
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as exc:
+        import sys
+        import traceback
+        print(f"FATAL: E2E main failed: {exc}", file=sys.stderr)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

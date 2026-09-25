@@ -198,14 +198,43 @@ async def cross_origin_log_redirect_contract() -> None:
         storage.server_close()
 
 
+async def safe_shutdown_contract() -> None:
+    from unittest.mock import MagicMock, patch
+    from devopspilot.adapters.openjiuwen.executor import (
+        _safe_runner_stop,
+        _safe_capture_drain,
+        _safe_capture_close,
+    )
+
+    hang_event = asyncio.Event()
+    dummy_runner = MagicMock()
+    dummy_runner.stop = hang_event.wait
+    with patch.dict(
+        "sys.modules",
+        {"openjiuwen.core.runner.runner": MagicMock(Runner=dummy_runner)},
+    ):
+        start = asyncio.get_running_loop().time()
+        await _safe_runner_stop(timeout=0.1)
+        elapsed = asyncio.get_running_loop().time() - start
+        assert elapsed < 1.0, f"Expected fast timeout return, took {elapsed}s"
+
+    broken_capture = MagicMock()
+    broken_capture.drain.side_effect = RuntimeError("drain failed")
+    broken_capture.close.side_effect = RuntimeError("close failed")
+    assert _safe_capture_drain(broken_capture) is None
+    _safe_capture_close(broken_capture)
+
+
 async def main() -> None:
     await workspace_contract()
     await remediation_contract()
     await cross_origin_log_redirect_contract()
+    await safe_shutdown_contract()
     print("REMEDIATION_EXISTING_BRANCH_WORKSPACE_OK")
     print("REMEDIATION_AGENT_CONTEXT_OK")
     print("REMEDIATION_SOURCE_BRANCH_IDENTITY_OK")
     print("GITHUB_CROSS_ORIGIN_LOG_REDIRECT_OK")
+    print("OPENJIUWEN_SAFE_SHUTDOWN_OK")
 
 
 if __name__ == "__main__":

@@ -14,11 +14,72 @@ from pathlib import Path
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.execution import ExecutionWorkspace, WorkspaceProvider
 from devopspilot.contracts.providers import MaaSProvider
+from devopspilot.contracts.trajectory import DeliveryTrajectory
 from devopspilot.evaluation.metrics import trajectory_runtime_metrics
 from devopspilot.routing import AgentTeamModelPlanner, DeliveryTaskProfiler
-from devopspilot.trajectory import OpenJiuwenTrajectoryCapture
+from devopspilot.trajectory import (
+    OpenJiuwenCaptureResult,
+    OpenJiuwenTrajectoryCapture,
+)
 
 from .model_router import build_team_model_routing
+
+
+async def _safe_runner_stop(timeout: float = 10.0) -> None:
+    """Defensively stop Runner and ensure read-write lock cleanup doesn't block."""
+    try:
+        from openjiuwen.core.runner.runner import Runner
+
+        stop_task = asyncio.create_task(Runner.stop())
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_task), timeout=timeout)
+        except asyncio.TimeoutError:
+            print(
+                f"DEVOPSPILOT_WARN: Runner.stop timed out after {timeout}s; proceeding with forced cleanup"
+            )
+            stop_task.cancel()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: Runner.stop encountered error: {exc}")
+
+    # Defensively cancel any remaining ReadWriteLockManager cleanup tasks
+    try:
+        from openjiuwen.core.sys_operation.local._rw_lock_manager import (
+            ReadWriteLockManager,
+        )
+
+        task = getattr(ReadWriteLockManager, "_cleanup_task", None)
+        if task is not None and not task.done():
+            task.cancel()
+            setattr(ReadWriteLockManager, "_cleanup_task", None)
+        locks = getattr(ReadWriteLockManager, "_locks", None)
+        if locks is not None:
+            locks.clear()
+        idle_heap = getattr(ReadWriteLockManager, "_idle_heap", None)
+        if idle_heap is not None:
+            idle_heap.clear()
+        idle_deadlines = getattr(ReadWriteLockManager, "_idle_deadlines", None)
+        if idle_deadlines is not None:
+            idle_deadlines.clear()
+        setattr(ReadWriteLockManager, "_state_lock", None)
+    except Exception:
+        pass
+
+
+def _safe_capture_drain(
+    capture: OpenJiuwenTrajectoryCapture,
+) -> OpenJiuwenCaptureResult | None:
+    try:
+        return capture.drain()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: capture.drain encountered error: {exc}")
+        return None
+
+
+def _safe_capture_close(capture: OpenJiuwenTrajectoryCapture) -> None:
+    try:
+        capture.close()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: capture.close encountered error: {exc}")
 
 
 def _runtime_slug(value: str) -> str:
@@ -255,17 +316,34 @@ class OpenJiuwenTaskExecutor:
             )
         finally:
             try:
-                await Runner.stop()
+                await _safe_runner_stop(timeout=10.0)
             finally:
                 try:
-                    capture_result = capture.drain()
+                    capture_result = _safe_capture_drain(capture)
                 finally:
-                    capture.close()
+                    _safe_capture_close(capture)
         print("DEVOPSPILOT_PHASE=agentteam.complete")
         if capture_result is None or capture_result.trajectory is None:
-            raise RuntimeError(
-                "OpenJiuwen execution completed without a canonical trajectory"
-            )
+            if runtime_timed_out:
+                fallback_trajectory = DeliveryTrajectory(
+                    trajectory_id=f"fallback-{task.work_item.item_id}",
+                    task_id=task.work_item.item_id,
+                    repository=task.repository.full_name,
+                    events=(),
+                )
+                capture_result = OpenJiuwenCaptureResult(
+                    trajectory=fallback_trajectory,
+                    issues=(
+                        {
+                            "kind": "degraded_capture",
+                            "reason": "agentteam_timeout_or_capture_failure",
+                        },
+                    ),
+                )
+            else:
+                raise RuntimeError(
+                    "OpenJiuwen execution completed without a canonical trajectory"
+                )
         runtime_metrics = trajectory_runtime_metrics(capture_result.trajectory)
         skill_tool_calls = sum(
             1

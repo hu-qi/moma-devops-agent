@@ -60,6 +60,7 @@ def main() -> None:
         "estimated_cost": 0.12,
         "human_interventions": 1,
         "artifacts": ["trajectory.json"],
+        "runtime_clean_completion": None,
     }
 
     print("TRAJECTORY_DEVOPSBENCH_METRICS_OK")
