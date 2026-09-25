@@ -25,8 +25,100 @@ from devopspilot.trajectory import (
 from .model_router import build_team_model_routing
 
 
+def _patch_openjiuwen_lock_manager() -> None:
+    """Neutralize cross-process SQLite file locks in OpenJiuwen.
+
+    In filelock>=3.25.0 (e.g. 4.0.3), AsyncReadWriteLock enforces that the releasing
+    asyncio task matches the acquiring task. OpenJiuwen's HybridAsyncReadWriteLock
+    spawns transient helper tasks for acquire and release separately, triggering:
+    'Cannot release a lock on /tmp/openjiuwen-fs-rwlocks/... that is not held by this task'.
+    Because DevOpsPilot executes within isolated single-process environments,
+    cross-process file locks are unneeded. We stub out lock_guard, start, stop,
+    and cleanup methods to guarantee robust file operations and fast teardown.
+    """
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _noop_lock_guard(*args, **kwargs):
+        yield
+
+    async def _noop_async(*args, **kwargs):
+        return None
+
+    import importlib
+    import sys
+
+    try:
+        mod = sys.modules.get("openjiuwen.core.sys_operation.local._rw_lock_manager")
+        if mod is None:
+            try:
+                mod = importlib.import_module("openjiuwen.core.sys_operation.local._rw_lock_manager")
+            except Exception:
+                mod = None
+
+        mgr = getattr(mod, "ReadWriteLockManager", None) if mod else None
+        if mgr is not None:
+            mgr.lock_guard = _noop_lock_guard
+            mgr.start = lambda *args, **kwargs: None
+            mgr.stop = _noop_async
+            mgr.cleanup_expired_locks = _noop_async
+            mgr.close_locks = _noop_async
+            task = getattr(mgr, "_cleanup_task", None)
+            if task is not None and not task.done():
+                task.cancel()
+            setattr(mgr, "_cleanup_task", None)
+            locks = getattr(mgr, "_locks", None)
+            if locks is not None:
+                locks.clear()
+            idle_heap = getattr(mgr, "_idle_heap", None)
+            if idle_heap is not None:
+                idle_heap.clear()
+            idle_deadlines = getattr(mgr, "_idle_deadlines", None)
+            if idle_deadlines is not None:
+                idle_deadlines.clear()
+            setattr(mgr, "_state_lock", None)
+    except Exception:
+        pass
+
+    try:
+        mod_lock = sys.modules.get("openjiuwen.core.sys_operation.local._async_read_write_lock")
+        if mod_lock is None:
+            try:
+                mod_lock = importlib.import_module("openjiuwen.core.sys_operation.local._async_read_write_lock")
+            except Exception:
+                mod_lock = None
+
+        hybrid_cls = getattr(mod_lock, "HybridAsyncReadWriteLock", None) if mod_lock else None
+        if hybrid_cls is not None:
+            hybrid_cls.read = _noop_lock_guard
+            hybrid_cls.write = _noop_lock_guard
+            hybrid_cls.close = _noop_async
+    except Exception:
+        pass
+
+    try:
+        mod_fs = sys.modules.get("openjiuwen.core.sys_operation.local.fs_operation")
+        if mod_fs is None:
+            try:
+                mod_fs = importlib.import_module("openjiuwen.core.sys_operation.local.fs_operation")
+            except Exception:
+                mod_fs = None
+
+        fs_cls = getattr(mod_fs, "FsOperation", None) if mod_fs else None
+        if fs_cls is not None:
+            fs_cls._file_lock = _noop_lock_guard
+            fs_cls._maybe_read_lock = _noop_lock_guard
+            fs_cls._ordered_file_locks = _noop_lock_guard
+    except Exception:
+        pass
+
+
+_patch_openjiuwen_lock_manager()
+
+
 async def _safe_runner_stop(timeout: float = 10.0) -> None:
     """Defensively stop Runner and ensure read-write lock cleanup doesn't block."""
+    _patch_openjiuwen_lock_manager()
     try:
         from openjiuwen.core.runner.runner import Runner
 
@@ -41,28 +133,7 @@ async def _safe_runner_stop(timeout: float = 10.0) -> None:
     except Exception as exc:
         print(f"DEVOPSPILOT_WARN: Runner.stop encountered error: {exc}")
 
-    # Defensively cancel any remaining ReadWriteLockManager cleanup tasks
-    try:
-        from openjiuwen.core.sys_operation.local._rw_lock_manager import (
-            ReadWriteLockManager,
-        )
-
-        task = getattr(ReadWriteLockManager, "_cleanup_task", None)
-        if task is not None and not task.done():
-            task.cancel()
-            setattr(ReadWriteLockManager, "_cleanup_task", None)
-        locks = getattr(ReadWriteLockManager, "_locks", None)
-        if locks is not None:
-            locks.clear()
-        idle_heap = getattr(ReadWriteLockManager, "_idle_heap", None)
-        if idle_heap is not None:
-            idle_heap.clear()
-        idle_deadlines = getattr(ReadWriteLockManager, "_idle_deadlines", None)
-        if idle_deadlines is not None:
-            idle_deadlines.clear()
-        setattr(ReadWriteLockManager, "_state_lock", None)
-    except Exception:
-        pass
+    _patch_openjiuwen_lock_manager()
 
 
 def _safe_capture_drain(
@@ -292,6 +363,7 @@ class OpenJiuwenTaskExecutor:
         capture.start()
         capture_result = None
         runtime_timed_out = False
+        _patch_openjiuwen_lock_manager()
         await Runner.start()
         try:
             async with asyncio.timeout(self._completion_timeout):

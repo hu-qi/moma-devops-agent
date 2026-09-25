@@ -204,7 +204,50 @@ async def safe_shutdown_contract() -> None:
         _safe_runner_stop,
         _safe_capture_drain,
         _safe_capture_close,
+        _patch_openjiuwen_lock_manager,
     )
+
+    class DummyLockManager:
+        _cleanup_task = None
+        _locks = {"key": "val"}
+        _idle_heap = [1]
+        _idle_deadlines = {"k": 1.0}
+        _state_lock = object()
+
+        @classmethod
+        def lock_guard(cls, *args, **kwargs):
+            raise RuntimeError("should be patched")
+
+    class DummyFsOperation:
+        @classmethod
+        def _file_lock(cls, *args, **kwargs):
+            raise RuntimeError("should be patched")
+
+    with patch.dict(
+        "sys.modules",
+        {
+            "openjiuwen.core.sys_operation.local._rw_lock_manager": MagicMock(
+                ReadWriteLockManager=DummyLockManager
+            ),
+            "openjiuwen.core.sys_operation.local.fs_operation": MagicMock(
+                FsOperation=DummyFsOperation
+            ),
+        },
+    ):
+        _patch_openjiuwen_lock_manager()
+        assert DummyLockManager._locks == {}
+        assert DummyLockManager._idle_heap == []
+        assert DummyLockManager._idle_deadlines == {}
+        assert DummyLockManager._state_lock is None
+
+        # Verify lock_guard and _file_lock are no-ops
+        async def check_noop() -> None:
+            async with DummyLockManager.lock_guard("path", "read", 1.0):
+                pass
+            async with DummyFsOperation._file_lock("path", "read", 1.0):
+                pass
+
+        asyncio.run(check_noop()) if not asyncio.get_event_loop().is_running() else await check_noop()
 
     hang_event = asyncio.Event()
     dummy_runner = MagicMock()
