@@ -1,3 +1,3 @@
 def status() -> str:
     """Return the current remediation fixture status."""
-    return "candidate"
+    return "fixed"
