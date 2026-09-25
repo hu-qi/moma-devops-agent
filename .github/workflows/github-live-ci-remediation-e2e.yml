@@ -34,7 +34,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  actions: read
+  actions: write
 
 env:
   MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}

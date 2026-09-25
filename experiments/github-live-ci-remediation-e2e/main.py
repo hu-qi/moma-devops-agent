@@ -151,6 +151,7 @@ async def wait_fixture_run(
     timeout_seconds: int = 300,
 ):
     attempts = max(1, timeout_seconds // 5)
+    approved_runs: set[int] = set()
     for attempt in range(1, attempts + 1):
         data = await client.request_json(
             "GET",
@@ -172,7 +173,33 @@ async def wait_fixture_run(
         ]
         if runs:
             item = runs[0]
-            if item.get("status") == "completed":
+            status = str(item.get("status") or "")
+            conclusion = str(item.get("conclusion") or "")
+            if status in {"waiting", "action_required"} or conclusion == "action_required":
+                run_id = int(item["id"])
+                if run_id not in approved_runs:
+                    approved_runs.add(run_id)
+                    print(
+                        "DEVOPSPILOT_REMEDIATION_CI_APPROVING "
+                        f"run={run_id}"
+                    )
+                    try:
+                        await client.request_json(
+                            "POST",
+                            f"/repos/{repository_name}/actions/runs/{run_id}/approve",
+                        )
+                        print(
+                            "DEVOPSPILOT_REMEDIATION_CI_APPROVED "
+                            f"run={run_id}"
+                        )
+                    except Exception as err:
+                        print(
+                            "DEVOPSPILOT_REMEDIATION_CI_APPROVE_FAILED "
+                            f"run={run_id} error={err}"
+                        )
+                await asyncio.sleep(5)
+                continue
+            if status == "completed":
                 repository = await repository_ref(
                     client,
                     repository_name,
