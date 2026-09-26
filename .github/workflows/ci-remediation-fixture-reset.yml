@@ -1,0 +1,80 @@
+name: CI Remediation Fixture Reset
+
+on:
+  push:
+    paths:
+      - "e2e/fixtures/ci_remediation/**"
+      - ".github/workflows/ci-remediation-fixture-reset.yml"
+  pull_request:
+    paths:
+      - "e2e/fixtures/ci_remediation/**"
+      - ".github/workflows/ci-remediation-fixture-reset.yml"
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Dedicated fixture branch to reset
+        required: true
+        default: devopspilot/fixture-ci-remediation
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  reset-contract:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prove reset is idempotent and restores a failing baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cp -R e2e/fixtures/ci_remediation/. "$tmp/"
+          cat > "$tmp/app.py" <<'PY'
+          def status() -> str:
+              return "fixed"
+          PY
+          python e2e/fixtures/ci_remediation/reset.py --root "$tmp"
+          python e2e/fixtures/ci_remediation/reset.py --root "$tmp"
+          python e2e/fixtures/ci_remediation/reset.py --root "$tmp" --check
+          if (cd "$tmp" && python test_app.py); then
+            echo "reset fixture unexpectedly passed"
+            exit 1
+          fi
+          echo "CI_REMEDIATION_RESET_CONTRACT_OK"
+
+  reset-branch:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Reset dedicated fixture branch
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          set -euo pipefail
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout -B "$TARGET_BRANCH" origin/main
+          python e2e/fixtures/ci_remediation/reset.py
+          python e2e/fixtures/ci_remediation/reset.py --check
+          git add e2e/fixtures/ci_remediation/app.py
+          if ! git diff --cached --quiet; then
+            git -c user.name=DevOpsPilot -c user.email=devopspilot@local               commit -m "test: reset CI remediation fixture"
+          fi
+          git push --force-with-lease origin "HEAD:refs/heads/$TARGET_BRANCH"
+          echo "CI_REMEDIATION_FIXTURE_BRANCH_RESET_OK branch=$TARGET_BRANCH"

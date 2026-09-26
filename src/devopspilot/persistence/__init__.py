@@ -10,6 +10,10 @@ from .evolution_audit import (
     StoredEvolutionEvidence,
     StoredPromotionDecision,
 )
+from .remediation_ledger import (
+    RemediationLedgerConflict,
+    SQLiteRemediationLedger,
+)
 from .sqlite_state import SQLiteDeliveryStateStore
 
 __all__ = [
@@ -20,4 +24,6 @@ __all__ = [
     "EvolutionAuditConflict",
     "StoredEvolutionEvidence",
     "StoredPromotionDecision",
+    "SQLiteRemediationLedger",
+    "RemediationLedgerConflict",
 ]

@@ -1,0 +1,73 @@
+name: GitHub Live CI Remediation E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Controlled remediation E2E issue number
+        required: true
+        default: "4"
+        type: string
+      target_branch:
+        description: Resettable fixture base branch
+        required: true
+        default: devopspilot/fixture-ci-remediation
+        type: string
+
+concurrency:
+  group: github-live-remediation-e2e-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  MOMA_API_BASE: ${{ vars.MOMA_API_BASE }}
+  MOMA_MODEL: ${{ vars.MOMA_MODEL }}
+  MOMA_API_KEY: ${{ secrets.MOMA_API_KEY }}
+  MOMA_REASONING_MODEL: ${{ vars.MOMA_REASONING_MODEL || 'GLM-5.3' }}
+  MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
+  MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
+  DEVOPSPILOT_E2E_ISSUE: ${{ inputs.issue_number || '4' }}
+  DEVOPSPILOT_TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
+
+jobs:
+  remediation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate runtime configuration
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEVOPSPILOT_GITHUB_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          test -n "$MOMA_API_BASE"
+          test -n "$MOMA_MODEL"
+          test -n "$MOMA_API_KEY"
+          test -n "$GITHUB_TOKEN"
+          test -n "$DEVOPSPILOT_E2E_ISSUE"
+          test -n "$DEVOPSPILOT_TARGET_BRANCH"
+
+      - name: Install OpenJiuwen release line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+
+      - name: Run live CI failure remediation loop
+        env:
+          PYTHONPATH: src
+          GITHUB_TOKEN: ${{ secrets.DEVOPSPILOT_GITHUB_TOKEN || github.token }}
+        run: python experiments/github-live-ci-remediation-e2e/main.py

@@ -19,21 +19,26 @@
 13. [11-cnb-openapi-contract-mapping.md](./11-cnb-openapi-contract-mapping.md) — CNB Swagger → DevOpsPilot contracts
 14. [12-delivery-loop.md](./12-delivery-loop.md) — provider-neutral delivery loop
 15. [13-moma-role-model-matrix.md](./13-moma-role-model-matrix.md) — live model Tool Calling qualification
-16. [14-role-model-ablation.md](./14-role-model-ablation.md) — qualified role-model comparison plan/results
+16. [14-devopsbench-role-model-ablation.md](./14-devopsbench-role-model-ablation.md) — qualified role-model comparison plan/results
 17. [15-model-vs-runtime-failure-analysis.md](./15-model-vs-runtime-failure-analysis.md) — model capability vs AgentTeam lifecycle failures
 18. [15-openjiuwen-trajectory-bridge.md](./15-openjiuwen-trajectory-bridge.md) — OpenJiuwen runtime evidence → canonical trajectory
 19. [16-openjiuwen-agentteam-lifecycle-reproducer.md](./16-openjiuwen-agentteam-lifecycle-reproducer.md) — AgentTeam stream/lifecycle reproducer
-20. [16-openjiuwen-agentteam-termination-pattern.md](./16-openjiuwen-agentteam-termination-pattern.md) — bounded termination strategy
+20. [16-agentteam-termination-pattern.md](./16-agentteam-termination-pattern.md) — bounded termination strategy
 21. [17-full-delivery-pipeline-integration.md](./17-full-delivery-pipeline-integration.md) — execute → publish → change request → CI → verify
-22. [18-live-github-delivery-e2e.md](./18-live-github-delivery-e2e.md) — real Issue → AgentTeam → PR → Actions evidence
+22. [18-first-live-github-delivery-e2e.md](./18-first-live-github-delivery-e2e.md) — real Issue → AgentTeam → PR → Actions evidence
 23. [19-openjiuwen-skill-evolution-candidate.md](./19-openjiuwen-skill-evolution-candidate.md) — Skill evolution candidate generation
 24. [20-delivery-evolution-opportunity-routing.md](./20-delivery-evolution-opportunity-routing.md) — trajectory/opportunity mining
 25. [21-team-pattern-swarm-skill-proposal.md](./21-team-pattern-swarm-skill-proposal.md) — repeated AgentTeam timeout → governed Team Pattern proposal
 26. [22-governed-swarm-skill-candidate.md](./22-governed-swarm-skill-candidate.md) — proposal approval → sandbox creator → official validator
 27. [23-team-pattern-devopsbench-ab.md](./23-team-pattern-devopsbench-ab.md) — baseline vs candidate Team/Swarm Skill evaluation
 28. [24-governed-artifact-registry.md](./24-governed-artifact-registry.md) — staged → approved activation → rollback/deactivate
+29. [25-autonomous-delivery-control-plane.md](./25-autonomous-delivery-control-plane.md) — control plane ledger, bounded policy, same-branch CI remediation, cross-origin logs
+30. [26-industry-engineering-packs.md](./26-industry-engineering-packs.md) — Industry Engineering Packs architecture, contracts, and reference government pack
+31. [27-atomgit-reference-adapter.md](./27-atomgit-reference-adapter.md) — AtomGit SCM and CI reference adapter implementation and contract verification
 
 ## Current Evolution Boundary
+
+Current implementation status and evidence corrections: [2026-09-26 project assessment](../project-assessment-2026-09-26.md). A local mock smoke, one historical live success, and repeatable V1 acceptance are separate evidence levels.
 
 The real repeated-timeout Team Pattern proposal remains **PENDING_HUMAN**.
 

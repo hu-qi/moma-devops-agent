@@ -26,6 +26,7 @@ class DeliveryTask:
     work_item: WorkItemRef
     target_branch: str
     metadata: Mapping[str, str] = field(default_factory=dict)
+    industry_pack: Any = None
 
 
 @dataclass(frozen=True, slots=True)

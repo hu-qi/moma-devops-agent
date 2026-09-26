@@ -14,11 +14,143 @@ from pathlib import Path
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.execution import ExecutionWorkspace, WorkspaceProvider
 from devopspilot.contracts.providers import MaaSProvider
+from devopspilot.contracts.trajectory import DeliveryTrajectory
 from devopspilot.evaluation.metrics import trajectory_runtime_metrics
 from devopspilot.routing import AgentTeamModelPlanner, DeliveryTaskProfiler
-from devopspilot.trajectory import OpenJiuwenTrajectoryCapture
+from devopspilot.trajectory import (
+    OpenJiuwenCaptureResult,
+    OpenJiuwenTrajectoryCapture,
+)
 
 from .model_router import build_team_model_routing
+
+
+def _patch_openjiuwen_lock_manager() -> None:
+    """Neutralize cross-process SQLite file locks in OpenJiuwen.
+
+    In filelock>=3.25.0 (e.g. 4.0.3), AsyncReadWriteLock enforces that the releasing
+    asyncio task matches the acquiring task. OpenJiuwen's HybridAsyncReadWriteLock
+    spawns transient helper tasks for acquire and release separately, triggering:
+    'Cannot release a lock on /tmp/openjiuwen-fs-rwlocks/... that is not held by this task'.
+    Because DevOpsPilot executes within isolated single-process environments,
+    cross-process file locks are unneeded. We stub out lock_guard, start, stop,
+    and cleanup methods to guarantee robust file operations and fast teardown.
+    """
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _noop_lock_guard(*args, **kwargs):
+        yield
+
+    async def _noop_async(*args, **kwargs):
+        return None
+
+    import importlib
+    import sys
+
+    try:
+        mod = sys.modules.get("openjiuwen.core.sys_operation.local._rw_lock_manager")
+        if mod is None:
+            try:
+                mod = importlib.import_module("openjiuwen.core.sys_operation.local._rw_lock_manager")
+            except Exception:
+                mod = None
+
+        mgr = getattr(mod, "ReadWriteLockManager", None) if mod else None
+        if mgr is not None:
+            mgr.lock_guard = _noop_lock_guard
+            mgr.start = lambda *args, **kwargs: None
+            mgr.stop = _noop_async
+            mgr.cleanup_expired_locks = _noop_async
+            mgr.close_locks = _noop_async
+            task = getattr(mgr, "_cleanup_task", None)
+            if task is not None and not task.done():
+                task.cancel()
+            setattr(mgr, "_cleanup_task", None)
+            locks = getattr(mgr, "_locks", None)
+            if locks is not None:
+                locks.clear()
+            idle_heap = getattr(mgr, "_idle_heap", None)
+            if idle_heap is not None:
+                idle_heap.clear()
+            idle_deadlines = getattr(mgr, "_idle_deadlines", None)
+            if idle_deadlines is not None:
+                idle_deadlines.clear()
+            setattr(mgr, "_state_lock", None)
+    except Exception:
+        pass
+
+    try:
+        mod_lock = sys.modules.get("openjiuwen.core.sys_operation.local._async_read_write_lock")
+        if mod_lock is None:
+            try:
+                mod_lock = importlib.import_module("openjiuwen.core.sys_operation.local._async_read_write_lock")
+            except Exception:
+                mod_lock = None
+
+        hybrid_cls = getattr(mod_lock, "HybridAsyncReadWriteLock", None) if mod_lock else None
+        if hybrid_cls is not None:
+            hybrid_cls.read = _noop_lock_guard
+            hybrid_cls.write = _noop_lock_guard
+            hybrid_cls.close = _noop_async
+    except Exception:
+        pass
+
+    try:
+        mod_fs = sys.modules.get("openjiuwen.core.sys_operation.local.fs_operation")
+        if mod_fs is None:
+            try:
+                mod_fs = importlib.import_module("openjiuwen.core.sys_operation.local.fs_operation")
+            except Exception:
+                mod_fs = None
+
+        fs_cls = getattr(mod_fs, "FsOperation", None) if mod_fs else None
+        if fs_cls is not None:
+            fs_cls._file_lock = _noop_lock_guard
+            fs_cls._maybe_read_lock = _noop_lock_guard
+            fs_cls._ordered_file_locks = _noop_lock_guard
+    except Exception:
+        pass
+
+
+_patch_openjiuwen_lock_manager()
+
+
+async def _safe_runner_stop(timeout: float = 10.0) -> None:
+    """Defensively stop Runner and ensure read-write lock cleanup doesn't block."""
+    _patch_openjiuwen_lock_manager()
+    try:
+        from openjiuwen.core.runner.runner import Runner
+
+        stop_task = asyncio.create_task(Runner.stop())
+        try:
+            await asyncio.wait_for(asyncio.shield(stop_task), timeout=timeout)
+        except asyncio.TimeoutError:
+            print(
+                f"DEVOPSPILOT_WARN: Runner.stop timed out after {timeout}s; proceeding with forced cleanup"
+            )
+            stop_task.cancel()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: Runner.stop encountered error: {exc}")
+
+    _patch_openjiuwen_lock_manager()
+
+
+def _safe_capture_drain(
+    capture: OpenJiuwenTrajectoryCapture,
+) -> OpenJiuwenCaptureResult | None:
+    try:
+        return capture.drain()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: capture.drain encountered error: {exc}")
+        return None
+
+
+def _safe_capture_close(capture: OpenJiuwenTrajectoryCapture) -> None:
+    try:
+        capture.close()
+    except Exception as exc:
+        print(f"DEVOPSPILOT_WARN: capture.close encountered error: {exc}")
 
 
 def _runtime_slug(value: str) -> str:
@@ -231,6 +363,7 @@ class OpenJiuwenTaskExecutor:
         capture.start()
         capture_result = None
         runtime_timed_out = False
+        _patch_openjiuwen_lock_manager()
         await Runner.start()
         try:
             async with asyncio.timeout(self._completion_timeout):
@@ -255,17 +388,34 @@ class OpenJiuwenTaskExecutor:
             )
         finally:
             try:
-                await Runner.stop()
+                await _safe_runner_stop(timeout=10.0)
             finally:
                 try:
-                    capture_result = capture.drain()
+                    capture_result = _safe_capture_drain(capture)
                 finally:
-                    capture.close()
+                    _safe_capture_close(capture)
         print("DEVOPSPILOT_PHASE=agentteam.complete")
         if capture_result is None or capture_result.trajectory is None:
-            raise RuntimeError(
-                "OpenJiuwen execution completed without a canonical trajectory"
-            )
+            if runtime_timed_out:
+                fallback_trajectory = DeliveryTrajectory(
+                    trajectory_id=f"fallback-{task.work_item.item_id}",
+                    task_id=task.work_item.item_id,
+                    repository=task.repository.full_name,
+                    events=(),
+                )
+                capture_result = OpenJiuwenCaptureResult(
+                    trajectory=fallback_trajectory,
+                    issues=(
+                        {
+                            "kind": "degraded_capture",
+                            "reason": "agentteam_timeout_or_capture_failure",
+                        },
+                    ),
+                )
+            else:
+                raise RuntimeError(
+                    "OpenJiuwen execution completed without a canonical trajectory"
+                )
         runtime_metrics = trajectory_runtime_metrics(capture_result.trajectory)
         skill_tool_calls = sum(
             1
@@ -343,6 +493,14 @@ class OpenJiuwenTaskExecutor:
                     test_summary=test_summary,
                 )
             print("DEVOPSPILOT_PHASE=verification.complete")
+
+        # Verification commands can create interpreter/test caches or, more
+        # importantly, mutate repository files after the pre-test path gate.
+        # Remove only known ephemeral artifacts, then enforce the path policy
+        # again so the commit/publisher observes a clean, still-constrained
+        # workspace.
+        await self._clean_runtime_artifacts(workspace)
+        changed_paths = await self._validate_paths(workspace)
 
         allowed = {
             x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
@@ -470,6 +628,14 @@ class OpenJiuwenTaskExecutor:
         allowed = workspace.metadata.get("allowed_paths", "(not specified)")
         forbidden = workspace.metadata.get("forbidden_paths", "(none)")
         test_command = workspace.metadata.get("test_command", "(not specified)")
+        industry_section = ""
+        if task.industry_pack is not None:
+            try:
+                from devopspilot.industry import build_industry_context
+                industry_section = f"\n\n{build_industry_context(task.industry_pack)}"
+            except Exception:
+                pass
+
         return f"""
 Repository workspace: {workspace.path}
 Source branch: {workspace.source_branch}
@@ -500,5 +666,5 @@ Constraints:
 - When the reviewer verdict arrives, the leader must immediately return its
   final response and stop; no extra polling, acknowledgements, or shutdown loop.
 - The leader must leave the verified working-tree changes in place for
-  DevOpsPilot to validate and commit.
+  DevOpsPilot to validate and commit.{industry_section}
 """.strip()

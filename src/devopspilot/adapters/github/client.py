@@ -11,8 +11,44 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 from urllib.error import HTTPError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import urlencode, urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+
+
+class _CrossOriginSafeRedirectHandler(HTTPRedirectHandler):
+    """Drop GitHub credentials when a download redirects off-origin.
+
+    GitHub Actions log/artifact endpoints return a temporary redirect to a
+    signed object-storage URL. Forwarding the GitHub Authorization header to
+    that storage host can invalidate the signed request and leaks a credential
+    to a different origin.
+    """
+
+    def redirect_request(
+        self,
+        req,
+        fp,
+        code,
+        msg,
+        headers,
+        newurl,
+    ):
+        redirected = super().redirect_request(
+            req,
+            fp,
+            code,
+            msg,
+            headers,
+            newurl,
+        )
+        if redirected is None:
+            return None
+        if urlparse(req.full_url).netloc != urlparse(newurl).netloc:
+            redirected.remove_header("Authorization")
+            redirected.remove_header("X-GitHub-Api-Version")
+        return redirected
 
 
 class GitHubAPIError(RuntimeError):
@@ -84,7 +120,8 @@ class GitHubHTTPClient:
         )
 
         try:
-            with urlopen(request, timeout=60) as response:  # noqa: S310
+            opener = build_opener(_CrossOriginSafeRedirectHandler())
+            with opener.open(request, timeout=60) as response:  # noqa: S310
                 return response.read()
         except HTTPError as exc:
             payload = exc.read().decode("utf-8", errors="replace")
