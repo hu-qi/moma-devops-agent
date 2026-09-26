@@ -1,0 +1,118 @@
+{
+  "assessment_date": "2026-09-26",
+  "baseline_sha": "abcb3895988a64d66e690042ff73ac5a82a3bb6c",
+  "includes_preexisting_uncommitted_changes": true,
+  "python": "3.11.14",
+  "live_models_invoked": false,
+  "local_results": [
+    {
+      "suite": "provider-contract-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "model-routing-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "trajectory-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "delivery-loop-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "delivery-state-store-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "durable-delivery-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "git-publisher-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "delivery-pipeline-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "autonomous-control-plane-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "remediation-adapter-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "evolution-gate-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "github-reference-adapter-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "cnb-reference-adapter-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "atomgit-reference-adapter-smoke",
+      "exit_code": 0,
+      "meaning": "local smoke"
+    },
+    {
+      "suite": "industry-pack-smoke",
+      "exit_code": 1,
+      "meaning": "missing PyYAML dependency"
+    },
+    {
+      "suite": "fixtures",
+      "exit_code": 0,
+      "meaning": "fixture preconditions only"
+    },
+    {
+      "suite": "unit-tests",
+      "exit_code": 1,
+      "meaning": "pytest unavailable; scripts subsequently run directly"
+    }
+  ],
+  "direct_script_results": {
+    "experiments/model-routing-smoke/test_profiler.py": "passed",
+    "experiments/trajectory-smoke/test_metrics.py": "passed",
+    "benchmarks/devopsbench/test_runtime_metrics.py": "passed"
+  },
+  "probes": {
+    "duplicate_start": "DeliveryStateConflict after 2 FakeSCM comments",
+    "mixed_green_red_ci": "ci-passed",
+    "industry_pack_roundtrip": null,
+    "delivery_task_type_hints": "NameError: name 'Any' is not defined"
+  },
+  "remote_runs": [
+    {
+      "id": 36086881849,
+      "conclusion": "success",
+      "runtime_degraded": "agentteam_timeout at 240 seconds"
+    },
+    {
+      "id": 36086892725,
+      "conclusion": "failure",
+      "stage": "checkout",
+      "reason": "fixture branch not found"
+    }
+  ]
+}

@@ -628,6 +628,14 @@ class OpenJiuwenTaskExecutor:
         allowed = workspace.metadata.get("allowed_paths", "(not specified)")
         forbidden = workspace.metadata.get("forbidden_paths", "(none)")
         test_command = workspace.metadata.get("test_command", "(not specified)")
+        industry_section = ""
+        if task.industry_pack is not None:
+            try:
+                from devopspilot.industry import build_industry_context
+                industry_section = f"\n\n{build_industry_context(task.industry_pack)}"
+            except Exception:
+                pass
+
         return f"""
 Repository workspace: {workspace.path}
 Source branch: {workspace.source_branch}
@@ -658,5 +666,5 @@ Constraints:
 - When the reviewer verdict arrives, the leader must immediately return its
   final response and stop; no extra polling, acknowledgements, or shutdown loop.
 - The leader must leave the verified working-tree changes in place for
-  DevOpsPilot to validate and commit.
+  DevOpsPilot to validate and commit.{industry_section}
 """.strip()

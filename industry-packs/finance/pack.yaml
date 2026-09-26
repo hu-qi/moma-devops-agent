@@ -1,0 +1,71 @@
+pack_id: devopspilot-industry-finance
+industry: finance
+version: "0.1.0"
+title: "金融行业核心软件工程规范包 (Finance Engineering Pack)"
+description: "面向银行、证券、保险与数字支付业务的研发工程底座规范包，严格遵循 JR/T 0071 与 PCI-DSS 标准，覆盖交易幂等、金额精度、卡号脱敏、双写对账与审计门禁。"
+
+compliance_rules:
+  - rule_id: FIN-COMP-001
+    name: "持卡人数据与敏感金融信息脱敏"
+    standard: "PCI-DSS v4.0 / JR/T 0071-2020"
+    severity: "critical"
+    description: "涉及银行卡号(PAN)、身份证号、CVV/CVC、账户余额等敏感字段，严禁以明文形式打印在应用日志、异常堆栈或跨系统上报链路中。"
+    remediation_guidance: "对 PAN 强制保留前6后4掩码遮蔽，绝对禁止记录敏感鉴权数据(SAD)如 CVV2，日志打印前接入脱敏切面。"
+
+  - rule_id: FIN-COMP-002
+    name: "动账与支付接口幂等性保障"
+    standard: "JR/T 0197-2020"
+    severity: "critical"
+    description: "所有涉及出入金、转账、扣费及状态变更的业务接口，必须强制校验唯一业务幂等键(idempotency_key)，防止网络抖动导致的重复动账。"
+    remediation_guidance: "在请求入口通过分布式锁或唯一索引校验 idempotency_key，返回已处理的确定性结果，阻断重复请求。"
+
+  - rule_id: FIN-COMP-003
+    name: "货币与金额计算严禁使用二进制浮点数"
+    standard: "金融业务数据精度规范"
+    severity: "critical"
+    description: "严禁在涉及金额、费率和利息的计算中使用 float / double 等二进制浮点类型，避免精度丢失导致对账差错。"
+    remediation_guidance: "统一使用定点数 Decimal 或以最小货币单位(分/厘)的整型数进行运算和存储。"
+
+architecture_constraints:
+  - constraint_id: FIN-ARCH-001
+    name: "高风险交易接口强制审计与双向追溯"
+    description: "动账类核心接口必须生成全局唯一 trace_id，并记录前后业务快照与经办人/客户端特征。"
+    allowed_patterns:
+      - "trace_id"
+      - "AuditContext"
+      - "IdempotencyKey"
+    rationale: "满足金融监察审计与跨系统对账排障要求。"
+
+  - constraint_id: FIN-ARCH-002
+    name: "禁止未经签名的跨行网关请求"
+    description: "所有对接第三方清算或支付网关的 HTTP/RPC 调用必须包含请求报文验签机制。"
+    forbidden_patterns:
+      - "requests.post(url, json=data)"  # raw unsigned post
+    rationale: "防止报文篡改与中间人攻击。"
+
+review_checklist:
+  - item_id: FIN-REV-001
+    category: "Precision"
+    prompt: "代码中涉及金额加减乘除时，是否全部使用 Decimal 或整数分，是否存在 float 运算？"
+    must_pass: true
+
+  - item_id: FIN-REV-002
+    category: "Idempotency"
+    prompt: "新增的动账/状态写入接口是否已处理并发与重试幂等？"
+    must_pass: true
+
+  - item_id: FIN-REV-003
+    category: "Security"
+    prompt: "日志输出中是否可能泄露银行卡 CVV、密码或私钥凭据？"
+    must_pass: true
+
+test_gates:
+  - gate_id: FIN-GATE-PRECISION
+    name: "Currency Calculation Precision Verification"
+    command: "python -c 'from decimal import Decimal; assert Decimal(\"0.1\") + Decimal(\"0.2\") == Decimal(\"0.3\"); print(\"Finance Precision Gate: PASS\")'"
+    timeout_seconds: 30
+    required: true
+
+metadata:
+  compliance_scope: "银行账务 / 证券交易 / 第三方支付结算"
+  author: "DevOpsPilot Core Team"

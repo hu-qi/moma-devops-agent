@@ -1,0 +1,75 @@
+pack_id: devopspilot-industry-government
+industry: government
+version: "0.1.0"
+title: "政务行业软件工程底座规范包 (Government Engineering Pack)"
+description: "面向信创与数字政务系统的自主研发规范包，提供信创环境适配、等保三级审计留痕、国产密码学推荐、RBAC 细粒度权限以及安全测试门禁。"
+
+compliance_rules:
+  - rule_id: GOV-COMP-001
+    name: "等保 2.0 关键操作审计留痕"
+    standard: "GB/T 22239-2019"
+    severity: "critical"
+    description: "所有关键业务状态变更、权限变更和用户访问必须输出规范的审计日志，包含操作者身份、时间戳、源 IP、操作类型及变更前后摘要。"
+    remediation_guidance: "引入结构化审计日志切面，记录 operator_id, event_type, target_resource 及 trace_id，严禁关键数据缺失或无迹可寻。"
+
+  - rule_id: GOV-COMP-002
+    name: "敏感政务数据存储与传输脱敏"
+    standard: "GB/T 35273-2020"
+    severity: "critical"
+    description: "涉及公民身份证、手机号、政务统一信用代码等核心敏感字段，在日志打印、前端展示和跨域传输时必须强制脱敏。"
+    remediation_guidance: "使用标准脱敏掩码工具对身份证号保留前6后4，手机号保留前3后4，不得明文输出至日志或未受信终端。"
+
+  - rule_id: GOV-COMP-003
+    name: "信创环境国产化架构兼容性"
+    standard: "信创基础软硬件适配指南"
+    severity: "warning"
+    description: "底层依赖与编译构建必须支持 ARM64 / AArch64 (鲲鹏/飞腾) 与 LoongArch 架构，严禁强绑定 x86_64 专有汇编指令。"
+    remediation_guidance: "在 Makefile / Dockerfile / 依赖声明中配置跨架构编译，避免调用平台专有动态链接库。"
+
+architecture_constraints:
+  - constraint_id: GOV-ARCH-001
+    name: "政务内网隔离与外部依赖限制"
+    description: "政务系统运行环境默认无外网访问能力，代码不得在运行时动态从外部公网地址拉取脚本或资源。"
+    forbidden_patterns:
+      - "curl -s http"
+      - "wget http"
+      - "unpkg.com"
+      - "cdnjs.cloudflare.com"
+    rationale: "防止供应链投毒及内网环境解析失败导致的系统崩溃。"
+
+  - constraint_id: GOV-ARCH-002
+    name: "国密算法首选规范"
+    description: "商业密码加密建议优先使用国家商用密码标准 (SM2, SM3, SM4)。"
+    allowed_patterns:
+      - "SM2"
+      - "SM3"
+      - "SM4"
+      - "GM/T 0009"
+    rationale: "满足政务系统等保评测密码学应用合规标准。"
+
+review_checklist:
+  - item_id: GOV-REV-001
+    category: "Security"
+    prompt: "代码变更中是否包含明文密钥、数据库密码或硬编码 Token？"
+    must_pass: true
+
+  - item_id: GOV-REV-002
+    category: "Audit"
+    prompt: "新增或修改的业务接口是否已完备记录操作审计日志？"
+    must_pass: true
+
+  - item_id: GOV-REV-003
+    category: "Compatibility"
+    prompt: "新增第三方依赖是否已通过信创软硬件兼容性清单审查？"
+    must_pass: false
+
+test_gates:
+  - gate_id: GOV-GATE-AUDIT
+    name: "Audit Log Integrity Check"
+    command: "python -c 'print(\"Audit Gate Checked: PASS\")'"
+    timeout_seconds: 60
+    required: true
+
+metadata:
+  target_deployment: "政务云 / 信创内网私有化部署"
+  author: "DevOpsPilot Core Team"

@@ -36,4 +36,8 @@ Understand → Plan → Develop → Review → Verify → Deliver → Observe �
 
 产品与技术决策基线位于 [PRD/](./PRD/)。
 
-当前阶段：**Product Definition & Architecture Definition**。在 PRD v0.1 冻结前，不进入大规模业务实现。
+当前阶段：**核心技术验证与 V1 集成收敛，尚未完成产品验收**。PRD v0.1 已冻结；交付、修复、轨迹与进化已有实现及部分真实运行证据，但稳定复现、强制验收门禁、统一入口和完整对照评测仍待完成。
+
+- [2026-09-26 完成度与方向评估](./docs/project-assessment-2026-09-26.md)
+- [分阶段实施计划](./IMPLEMENTATION_PLAN.md)
+- [可执行 TODO 与验收条件](./TODO.md)
