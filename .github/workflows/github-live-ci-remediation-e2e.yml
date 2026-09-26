@@ -1,18 +1,6 @@
 name: GitHub Live CI Remediation E2E
 
 on:
-  push:
-    branches:
-      - devopspilot/autonomous-delivery-control-plane
-    paths:
-      - "experiments/github-live-ci-remediation-e2e/**"
-      - "src/devopspilot/adapters/github/**"
-      - "src/devopspilot/adapters/git/**"
-      - "src/devopspilot/adapters/openjiuwen/**"
-      - "src/devopspilot/contracts/remediation.py"
-      - "src/devopspilot/orchestration/control_plane.py"
-      - ".github/workflows/ci-remediation-fixture-ci.yml"
-      - ".github/workflows/github-live-ci-remediation-e2e.yml"
   workflow_dispatch:
     inputs:
       issue_number:
