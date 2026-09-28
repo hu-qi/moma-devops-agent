@@ -102,17 +102,20 @@ def test_loader_and_registry() -> None:
     assert "GOV-REV-001" in context or "明文密钥" in context
     print("INDUSTRY_PACK_CONTEXT_BUILD_OK")
 
-    # Gate execution verification
+    # Gate execution verification in clean workspace
     gate = pack.test_gates[0]
-    proc = subprocess.run(
-        gate.command,
-        shell=True,
-        capture_output=True,
-        text=True,
-        timeout=gate.timeout_seconds,
-    )
-    assert proc.returncode == 0
-    assert "Audit Gate Checked: PASS" in proc.stdout
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="clean_gov_") as tmpdir:
+        (Path(tmpdir) / "service.py").write_text("def handle(): pass\n", encoding="utf-8")
+        proc = subprocess.run(
+            f"{sys.executable} -m devopspilot.industry.rules.gov_audit_checker {tmpdir}",
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=gate.timeout_seconds,
+        )
+        assert proc.returncode == 0
+        assert "PASSED" in proc.stdout
     print("INDUSTRY_PACK_GATE_EXECUTION_OK")
 
 

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devopspilot"
+version = "0.1.0"
+description = "Autonomous DevOps pilot and delivery control plane"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "DevOpsPilot Team" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+industry = [
+    "pyyaml>=6.0.1",
+]
+test = [
+    "pytest>=8.0.0",
+]
+runtime = [
+    # Pin to exact resolved commit from openJiuwen release/v0.1.19
+    "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@6f3a33fbb93aece65105c477c573057fead0e8dd",
+]
+all = [
+    "pyyaml>=6.0.1",
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+devopspilot = "devopspilot.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["experiments", "benchmarks"]
+python_files = ["test_*.py"]

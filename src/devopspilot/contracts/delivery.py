@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Mapping, Protocol, runtime_checkable
+from typing import Any, Mapping, Protocol, runtime_checkable
 
+from .industry import PackRef
 from .providers import ChangeRequestRef, CIJobLog, CIRunRef, RepositoryRef, WorkItemRef
+from .review import ReviewResult
 
 
 class DeliveryPhase(StrEnum):
@@ -26,6 +28,7 @@ class DeliveryTask:
     work_item: WorkItemRef
     target_branch: str
     metadata: Mapping[str, str] = field(default_factory=dict)
+    pack_ref: PackRef | None = None
     industry_pack: Any = None
 
 
@@ -42,6 +45,7 @@ class ExecutionResult:
     summary: str
     published: bool
     test_summary: str = ""
+    review: ReviewResult | None = None
     metadata: Mapping[str, str] = field(default_factory=dict)
 
 
@@ -50,6 +54,12 @@ class VerificationResult:
     accepted: bool
     summary: str
     evidence: tuple[str, ...] = ()
+    outcome_status: str = "verified_clean"
+    task_success: bool = True
+    runtime_clean_completion: bool = True
+    evidence_completeness: bool = True
+    degradation_reason: str = ""
+    escalation_path: str = ""
 
 
 @dataclass(frozen=True, slots=True)

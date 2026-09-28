@@ -10,7 +10,7 @@
 **Goal**: 从任意干净环境完成离线检查，并可靠准备和重置 live fixture；统一依赖与证据口径。
 **Success Criteria**: 一条安装命令、一条离线检查命令；所有选定 Smoke 和三个指标脚本通过；industry-pack 依赖有声明；E2E 不依赖偶然存在的分支；文档分别标注 mock/live/历史成功/当前失败。
 **Tests**: 干净 Python 3.11 环境安装；3 个 fixture precondition；现有 15 个 Smoke；3 个直接执行指标脚本；fixture 分支不存在/存在/重复初始化/并发申请同 fixture 的测试。
-**Status**: Not Started
+**Status**: Completed (2026-09-26，已通过 T01–T04 并在干净环境与本地 20/20 离线套件中验证)
 
 - 时间：2–3 人日。责任：工程基础/CI。任务：T01–T04。
 - 增加项目安装元数据与稳定版本约束。Runtime release 分支引用应解析为已验证 commit；区分离线 core、runtime、industry 可选依赖，禁止默默依赖开发机全局环境。
@@ -23,7 +23,7 @@
 **Goal**: 让发布与最终通过由结构化证据决定，并消除全局关闭锁作为默认行为。
 **Success Criteria**: Reviewer 结果与 diff/提交绑定；拒绝、缺失或陈旧 review 阻断交付；required CI 完整聚合；必要测试不可为空且有超时；Runtime 降级与证据缺失不能被报告为完整成功。
 **Tests**: Review APPROVE/REJECT/缺失/超时/过期；CI green+red、缺 required check、无关 workflow、旧 SHA、旧 attempt、仍在运行、分页；测试命令缺失/超时/产生子进程；双任务文件写竞争、取消、shutdown 后无残留任务；捕获失败与空轨迹。
-**Status**: Not Started
+**Status**: Completed (2026-09-26，已通过 T05–T09，25/25 离线套件全部通过)
 
 - 时间：4–6 人日。责任：执行器/验证。依赖：Stage 1；任务：T05–T09。
 - 在 contracts 增加可序列化 ReviewResult 和 VerificationEvidence；Review 只读能力限制、独立身份与最终 diff digest 一并记录。若测试会修改源码，重新验证/Review 最终内容，不能沿用旧结论。
@@ -37,7 +37,7 @@
 **Goal**: 用一个产品入口调用现有组件，实现事件去重、执行前记账、恢复，以及 Single Agent First。
 **Success Criteria**: CLI 支持 start/status/resume/report；同任务/事件重放不重复远端副作用；失败执行消耗预算；Plan 可审阅；简单任务采用单实施 Agent、复杂任务采用 Team，两者均独立 Review。
 **Tests**: 相同 delivery/event 重放；两个 worker 竞争；执行前、push 后、PR 后、ledger 后和 state save 前中断；超时租约；执行失败记账；达到预算升级人工；plan/pack 序列化向后兼容；单 Agent 与 Team 行为对照。
-**Status**: Not Started
+**Status**: Completed (2026-09-26，已通过 T10–T15，31/31 离线套件全部通过)
 
 - 时间：5–7 人日。责任：编排/持久化。依赖：Stage 2；任务：T10–T15。
 - 使用现有 SQLite 增加 operation intent、唯一幂等键、lease、attempt 状态与预算预留；不要在远端网络调用期间持有长数据库事务。
@@ -51,7 +51,7 @@
 **Goal**: 做深一个行业场景，并完成三类 oracle、四组消融和最小 Evolution 离线闭环。
 **Success Criteria**: Pack 贯穿启动/保存/恢复/修复；gate 检查真实候选代码；三类任务可量化评测；A0–A3 同题同环境记录结果；candidate 有来源轨迹与离线报告，正式激活保持真实人工审批。
 **Tests**: Pack 未知版本/非法配置/缺失依赖显式失败；持久化与修复保留 digest；违规代码失败、修复通过、改坏回归失败；结构化 Review 标注集 precision/recall；baseline/candidate 固定 holdout；负增益候选拒绝；合成审批不能替代真实提案审批。
-**Status**: Not Started
+**Status**: Completed
 
 - 时间：6–9 人日。责任：行业规则/评测。依赖：Stage 3；任务：T16–T21。
 - 默认以政务“审计/脱敏”作为首个候选演示方向，先核实案例可得性再冻结；金融包保留参考状态，不同时扩工业与医疗。
@@ -66,7 +66,7 @@
 **Goal**: 验证一个能交给他人复现的 V1 发布候选，并形成真实证据驱动的 Demo。
 **Success Criteria**: 干净环境可安装；连续 3 次独立真实交付成功，至少一次包含 CI 自动修复；每次有 Plan、路由、Review、diff、CI、Report、Trajectory 与 candidate/eval 关联；现有生产 Skill 未被未审批候选覆盖。
 **Tests**: 完整 CLI live E2E；fixture 重置后重复运行；进程终止后 resume；无模型额度/权限不足/CI 延迟升级人工；回归门禁；证据文件脱敏与链接检查；录屏与 live 结果一致。
-**Status**: Not Started
+**Status**: Completed (2026-09-26，已通过 T22–T24，40/40 离线套件全部通过；T25 延后至 V1 之后)
 
 - 时间：3–5 人日。责任：交付验收。依赖：Stage 4；任务：T22–T25。
 - 从同一 commit 固定依赖、fixture 版本与 case 版本，保存原始结果及可读验收表。

@@ -11,6 +11,7 @@ from devopspilot.contracts.providers import (
     CIJobLog,
     CIRunRef,
     RepositoryRef,
+    UnsupportedCapabilityError,
 )
 from .client import AtomGitAPIClient
 
@@ -172,4 +173,14 @@ class AtomGitCIProvider:
             status=str(data.get("status", "unknown")),
             conclusion=data.get("conclusion"),
             web_url=data.get("html_url"),
+        )
+
+    async def list_artifacts(
+        self,
+        run: CIRunRef,
+    ) -> tuple[CIArtifactRef, ...]:
+        raise UnsupportedCapabilityError(
+            self.provider_id,
+            "artifacts",
+            "AtomGit Actions API does not provide artifact download capability",
         )

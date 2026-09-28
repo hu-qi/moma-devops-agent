@@ -306,10 +306,51 @@ def evaluate_case(
             runtime_metrics=runtime_metrics,
         )
 
-    raise NotImplementedError(
-        "structured-review candidate evaluation requires the Agent-result adapter "
-        "and is intentionally not guessed by the deterministic runner"
-    )
+    if oracle_type == "structured-review":
+        from benchmarks.devopsbench.review_evaluator import StructuredReviewEvaluator
+        evaluator = StructuredReviewEvaluator()
+        
+        # Try loading candidate review result from workspace or metrics
+        candidate_data = (runtime_metrics or {}).get("review_result")
+        if candidate_data is None:
+            review_file = workspace / "review_result.json"
+            if review_file.exists():
+                candidate_data = json.loads(review_file.read_text(encoding="utf-8"))
+            else:
+                candidate_data = {"verdict": "rejected", "findings": [], "summary": "No review result provided"}
+
+        eval_result = evaluator.evaluate(candidate_data, case["oracle"])
+        metrics = runtime_metrics or {}
+
+        return {
+            "case_id": case["id"],
+            "run_id": run_id,
+            "variant": variant,
+            "status": "passed" if eval_result.passed else "failed",
+            "task_success": eval_result.passed,
+            "review_pass": eval_result.passed,
+            "precision": eval_result.precision,
+            "recall": eval_result.recall,
+            "f1_score": eval_result.f1_score,
+            "true_positives": eval_result.true_positives,
+            "false_positives": eval_result.false_positives,
+            "false_negatives": eval_result.false_negatives,
+            "duration_ms": metrics.get("duration_ms", 0),
+            "model_calls": metrics.get("model_calls", 0),
+            "tool_calls": metrics.get("tool_calls", 0),
+            "input_tokens": metrics.get("input_tokens", 0),
+            "output_tokens": metrics.get("output_tokens", 0),
+            "estimated_cost": metrics.get("estimated_cost"),
+            "human_interventions": metrics.get("human_interventions", 0),
+            "runtime_clean_completion": metrics.get("runtime_clean_completion"),
+            "failure_reason": None if eval_result.passed else eval_result.reason,
+            "evidence": {
+                "oracle_type": "structured-review",
+                **eval_result.to_dict(),
+            },
+        }
+
+    raise ValueError(f"unsupported oracle type: {oracle_type!r}")
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1,0 +1,49 @@
+{
+  "id": "ci.python.env_variable_mismatch.001",
+  "version": "0.1.0",
+  "category": "ci-debug",
+  "title": "Python CI environment variable name mismatch in config.py",
+  "description": "Align configuration environment variable name from APP_PORT_NUM to APP_PORT to pass CI verification.",
+  "task": "Fix the environment variable lookup in config.py so verify_ci.py passes with exit code 0.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "config.py"
+    ],
+    "forbidden_paths": [
+      "verify_ci.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python verify_ci.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python verify_ci.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "ci",
+    "ci-debug",
+    "env-vars"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic benchmark fixture",
+    "license": "Apache-2.0",
+    "notes": "Created for deterministic CI debug evaluation."
+  }
+}

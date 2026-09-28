@@ -12,7 +12,25 @@ from dataclasses import replace
 from pathlib import Path
 
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
-from devopspilot.contracts.execution import ExecutionWorkspace, WorkspaceProvider
+from devopspilot.contracts.execution import (
+    ExecutionWorkspace,
+    WorkspaceProvider,
+    ReviewResult,
+    ReviewVerdict,
+    ReviewGateError,
+    enforce_review_gate,
+)
+from devopspilot.contracts.planning import ExecutionMode, ExecutionPlan
+from devopspilot.routing.execution_planner import SingleAgentFirstPlanner
+from devopspilot.orchestration.test_runner import (
+    ControlledRunResult,
+    EmptyVerificationCommandError,
+    OracleTamperError,
+    VerificationError,
+    VerificationTimeoutError,
+    run_controlled_command,
+    verify_oracle_not_tampered,
+)
 from devopspilot.contracts.providers import MaaSProvider
 from devopspilot.contracts.trajectory import DeliveryTrajectory
 from devopspilot.evaluation.metrics import trajectory_runtime_metrics
@@ -22,103 +40,17 @@ from devopspilot.trajectory import (
     OpenJiuwenTrajectoryCapture,
 )
 
+from .lock_shim import apply_controlled_lock_shim, get_shim_state
 from .model_router import build_team_model_routing
 
 
 def _patch_openjiuwen_lock_manager() -> None:
-    """Neutralize cross-process SQLite file locks in OpenJiuwen.
-
-    In filelock>=3.25.0 (e.g. 4.0.3), AsyncReadWriteLock enforces that the releasing
-    asyncio task matches the acquiring task. OpenJiuwen's HybridAsyncReadWriteLock
-    spawns transient helper tasks for acquire and release separately, triggering:
-    'Cannot release a lock on /tmp/openjiuwen-fs-rwlocks/... that is not held by this task'.
-    Because DevOpsPilot executes within isolated single-process environments,
-    cross-process file locks are unneeded. We stub out lock_guard, start, stop,
-    and cleanup methods to guarantee robust file operations and fast teardown.
-    """
-    from contextlib import asynccontextmanager
-
-    @asynccontextmanager
-    async def _noop_lock_guard(*args, **kwargs):
-        yield
-
-    async def _noop_async(*args, **kwargs):
-        return None
-
-    import importlib
-    import sys
-
-    try:
-        mod = sys.modules.get("openjiuwen.core.sys_operation.local._rw_lock_manager")
-        if mod is None:
-            try:
-                mod = importlib.import_module("openjiuwen.core.sys_operation.local._rw_lock_manager")
-            except Exception:
-                mod = None
-
-        mgr = getattr(mod, "ReadWriteLockManager", None) if mod else None
-        if mgr is not None:
-            mgr.lock_guard = _noop_lock_guard
-            mgr.start = lambda *args, **kwargs: None
-            mgr.stop = _noop_async
-            mgr.cleanup_expired_locks = _noop_async
-            mgr.close_locks = _noop_async
-            task = getattr(mgr, "_cleanup_task", None)
-            if task is not None and not task.done():
-                task.cancel()
-            setattr(mgr, "_cleanup_task", None)
-            locks = getattr(mgr, "_locks", None)
-            if locks is not None:
-                locks.clear()
-            idle_heap = getattr(mgr, "_idle_heap", None)
-            if idle_heap is not None:
-                idle_heap.clear()
-            idle_deadlines = getattr(mgr, "_idle_deadlines", None)
-            if idle_deadlines is not None:
-                idle_deadlines.clear()
-            setattr(mgr, "_state_lock", None)
-    except Exception:
-        pass
-
-    try:
-        mod_lock = sys.modules.get("openjiuwen.core.sys_operation.local._async_read_write_lock")
-        if mod_lock is None:
-            try:
-                mod_lock = importlib.import_module("openjiuwen.core.sys_operation.local._async_read_write_lock")
-            except Exception:
-                mod_lock = None
-
-        hybrid_cls = getattr(mod_lock, "HybridAsyncReadWriteLock", None) if mod_lock else None
-        if hybrid_cls is not None:
-            hybrid_cls.read = _noop_lock_guard
-            hybrid_cls.write = _noop_lock_guard
-            hybrid_cls.close = _noop_async
-    except Exception:
-        pass
-
-    try:
-        mod_fs = sys.modules.get("openjiuwen.core.sys_operation.local.fs_operation")
-        if mod_fs is None:
-            try:
-                mod_fs = importlib.import_module("openjiuwen.core.sys_operation.local.fs_operation")
-            except Exception:
-                mod_fs = None
-
-        fs_cls = getattr(mod_fs, "FsOperation", None) if mod_fs else None
-        if fs_cls is not None:
-            fs_cls._file_lock = _noop_lock_guard
-            fs_cls._maybe_read_lock = _noop_lock_guard
-            fs_cls._ordered_file_locks = _noop_lock_guard
-    except Exception:
-        pass
-
-
-_patch_openjiuwen_lock_manager()
+    """Compatibility shim for tests explicitly requesting lock patching."""
+    apply_controlled_lock_shim(force=True)
 
 
 async def _safe_runner_stop(timeout: float = 10.0) -> None:
-    """Defensively stop Runner and ensure read-write lock cleanup doesn't block."""
-    _patch_openjiuwen_lock_manager()
+    """Defensively stop Runner without unconditionally mutating global lock behavior."""
     try:
         from openjiuwen.core.runner.runner import Runner
 
@@ -132,8 +64,6 @@ async def _safe_runner_stop(timeout: float = 10.0) -> None:
             stop_task.cancel()
     except Exception as exc:
         print(f"DEVOPSPILOT_WARN: Runner.stop encountered error: {exc}")
-
-    _patch_openjiuwen_lock_manager()
 
 
 def _safe_capture_drain(
@@ -267,6 +197,17 @@ class OpenJiuwenTaskExecutor:
         team_runtime_id = (
             f"{_runtime_slug(task.work_item.item_id)}-{execution_id}"
         )
+
+        # Resolve or generate structured execution plan (Single Agent First)
+        raw_plan = workspace.metadata.get("execution_plan") or task.metadata.get("execution_plan")
+        if raw_plan:
+            try:
+                execution_plan = ExecutionPlan.from_json(raw_plan)
+            except Exception:
+                execution_plan = SingleAgentFirstPlanner().plan(task)
+        else:
+            override_m = workspace.metadata.get("execution_mode") or task.metadata.get("execution_mode")
+            execution_plan = SingleAgentFirstPlanner().plan(task, override_mode=override_m)
 
         def model_spec(model_name: str) -> dict:
             # Fallback path if model-router allocation is unavailable.
@@ -455,6 +396,9 @@ class OpenJiuwenTaskExecutor:
             "capture_issues": str(len(capture_result.issues)),
             "skills_dir": configured_skills_dir,
             "enabled_skills": ",".join(enabled_skills),
+            "execution_mode": execution_plan.mode.value,
+            "execution_plan": execution_plan.to_json(),
+            "execution_rationale": execution_plan.rationale,
             "runtime_degraded": "true" if runtime_timed_out else "false",
             "runtime_degradation_reason": (
                 "agentteam_timeout" if runtime_timed_out else ""
@@ -468,39 +412,112 @@ class OpenJiuwenTaskExecutor:
             )
 
         test_command = workspace.metadata.get("test_command", "").strip()
+        require_verification = (
+            workspace.metadata.get("require_verification", "").lower() == "true"
+            or task.metadata.get("require_verification", "").lower() == "true"
+        )
         test_summary = ""
 
-        # Shell execution is confined to the workspace and is only used for
-        # benchmark/repository-owned verification commands. Secrets are never
-        # interpolated into this command.
+        # Enforce non-empty verification command if verification is explicitly required
+        if require_verification and not test_command:
+            raise OpenJiuwenExecutionError(
+                "Verification is required but test_command is empty",
+                metadata=execution_metadata,
+            )
+
+        # Oracle tamper check before test execution
+        forbidden_list = tuple(
+            x.strip() for x in workspace.metadata.get("forbidden_paths", "").split(",") if x.strip()
+        )
+        if forbidden_list:
+            try:
+                verify_oracle_not_tampered(workspace.path, forbidden_list)
+            except OracleTamperError as exc:
+                raise OpenJiuwenExecutionError(
+                    str(exc),
+                    metadata=execution_metadata,
+                ) from exc
+
+        # Shell execution is confined to the workspace with timeout and process group cleanup
         if test_command:
             print("DEVOPSPILOT_PHASE=verification.start")
-            proc = await asyncio.create_subprocess_shell(
-                test_command,
-                cwd=str(workspace.path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout_b, stderr_b = await proc.communicate()
-            test_summary = (
-                stdout_b.decode("utf-8", errors="replace")
-                + stderr_b.decode("utf-8", errors="replace")
-            )[-4000:]
-            if proc.returncode != 0:
+            timeout_sec = float(workspace.metadata.get("test_timeout_seconds", 60.0))
+            try:
+                run_res = await run_controlled_command(
+                    test_command,
+                    cwd=workspace.path,
+                    timeout_seconds=timeout_sec,
+                    require_non_empty=require_verification,
+                )
+            except VerificationError as exc:
                 raise OpenJiuwenExecutionError(
-                    f"Independent verification failed ({proc.returncode}):\n{test_summary}",
+                    f"Verification execution error: {exc}",
+                    metadata=execution_metadata,
+                ) from exc
+
+            test_summary = run_res.combined_output[-4000:]
+            if run_res.returncode != 0:
+                raise OpenJiuwenExecutionError(
+                    f"Independent verification failed ({run_res.returncode}):\n{test_summary}",
                     metadata=execution_metadata,
                     test_summary=test_summary,
                 )
             print("DEVOPSPILOT_PHASE=verification.complete")
 
-        # Verification commands can create interpreter/test caches or, more
-        # importantly, mutate repository files after the pre-test path gate.
+        # Verification commands can create interpreter/test caches or mutate repository files.
+        # Ensure forbidden oracle files were not altered during test run.
+        if forbidden_list:
+            try:
+                verify_oracle_not_tampered(workspace.path, forbidden_list)
+            except OracleTamperError as exc:
+                raise OpenJiuwenExecutionError(
+                    f"Post-test check failed: {exc}",
+                    metadata=execution_metadata,
+                ) from exc
+
         # Remove only known ephemeral artifacts, then enforce the path policy
         # again so the commit/publisher observes a clean, still-constrained
         # workspace.
         await self._clean_runtime_artifacts(workspace)
         changed_paths = await self._validate_paths(workspace)
+        diff_after_test = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
+
+        # Enforce review gate policy if required by task metadata or configuration
+        review_result: ReviewResult | None = getattr(workspace, "review_result", None)
+        if review_result is None and "review_result" in workspace.metadata:
+            import json
+            try:
+                raw_rev = json.loads(workspace.metadata["review_result"])
+                review_result = ReviewResult(
+                    reviewer_id=raw_rev.get("reviewer_id", "reviewer"),
+                    verdict=ReviewVerdict(raw_rev.get("verdict", "rejected")),
+                    diff_digest=raw_rev.get("diff_digest", ""),
+                    summary=raw_rev.get("summary", ""),
+                    metadata=raw_rev.get("metadata", {}),
+                )
+            except Exception:
+                review_result = None
+
+        require_review = (
+            workspace.metadata.get("require_review", "").lower() == "true"
+            or task.metadata.get("require_review", "").lower() == "true"
+        )
+        if require_review:
+            try:
+                enforce_review_gate(
+                    review=review_result,
+                    current_diff=diff_after_test,
+                    require_review=True,
+                )
+            except ReviewGateError as exc:
+                raise OpenJiuwenExecutionError(
+                    f"Review gate rejected commit: {exc}",
+                    metadata={
+                        **execution_metadata,
+                        "review_verdict": review_result.verdict.value if review_result else "missing",
+                        "review_gate_error": str(exc),
+                    },
+                ) from exc
 
         allowed = {
             x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
@@ -534,6 +551,7 @@ class OpenJiuwenTaskExecutor:
             ),
             published=False,
             test_summary=test_summary.strip(),
+            review=review_result,
             metadata=execution_metadata,
         )
 

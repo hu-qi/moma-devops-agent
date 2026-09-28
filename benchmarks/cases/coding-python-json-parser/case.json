@@ -1,0 +1,49 @@
+{
+  "id": "coding.python.json_parser.001",
+  "version": "0.1.0",
+  "category": "coding",
+  "title": "Python nested JSON field extraction and KeyError safeguard",
+  "description": "Handle missing nested keys safely with default fallback.",
+  "task": "Fix extract_nested_value in parser.py to avoid KeyError when keys are missing.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "parser.py"
+    ],
+    "forbidden_paths": [
+      "test_parser.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python -m pytest test_parser.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python -m pytest test_parser.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "coding",
+    "json",
+    "parser"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic benchmark fixture",
+    "license": "Apache-2.0",
+    "notes": "Created for deterministic coding evaluation."
+  }
+}

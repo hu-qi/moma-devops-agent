@@ -9,7 +9,10 @@ from devopspilot.contracts.evolution import (
     EvolutionEvidence,
     EvolutionProvider,
     EvolutionRequest,
+    HumanPromotionApproval,
     PromotionDecision,
+    RollbackDecision,
+    UnauthorizedPromotionError,
 )
 
 from .gate import RegressionGate
@@ -74,4 +77,52 @@ class EvolutionEngine:
                 "Candidate passed the automated gate and requires explicit "
                 "human approval before production promotion."
             ),
+        )
+
+    @staticmethod
+    def promote_to_production(
+        *,
+        decision: PromotionDecision,
+        approval: HumanPromotionApproval,
+    ) -> PromotionDecision:
+        if decision.state != ApprovalState.PENDING_HUMAN:
+            raise ValueError(f"Cannot promote decision with state {decision.state}")
+
+        if approval.synthetic and approval.production:
+            raise UnauthorizedPromotionError(
+                "Synthetic or mock approvals are strictly prohibited from promoting to production; "
+                "an explicit verified human sign-off is required."
+            )
+
+        if not approval.sign_off:
+            return PromotionDecision(
+                candidate_id=decision.candidate_id,
+                state=ApprovalState.REJECTED,
+                evidence=decision.evidence,
+                rollback_version=decision.rollback_version,
+                reason=f"Human reviewer rejected promotion: {approval.notes}",
+            )
+
+        return PromotionDecision(
+            candidate_id=decision.candidate_id,
+            state=ApprovalState.APPROVED,
+            evidence=decision.evidence,
+            rollback_version=decision.rollback_version,
+            reason=f"Promoted to production by {approval.approver}: {approval.notes}",
+        )
+
+    @staticmethod
+    def rollback(
+        *,
+        artifact_id: str,
+        target_version: str,
+        decided_by: str,
+        reason: str = "",
+    ) -> RollbackDecision:
+        return RollbackDecision(
+            artifact_id=artifact_id,
+            target_version=target_version,
+            state=ApprovalState.APPROVED,
+            decided_by=decided_by,
+            reason=reason or f"Rollback to version {target_version} authorized by {decided_by}",
         )

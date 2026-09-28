@@ -179,6 +179,20 @@ class RollbackDecision:
     reason: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class HumanPromotionApproval:
+    """Explicit sign-off required for promoting an evolution candidate to production."""
+    approver: str
+    sign_off: bool
+    production: bool = True
+    synthetic: bool = False  # If True, purely simulated approval for testing; MUST NOT promote to production
+    notes: str = ""
+
+
+class UnauthorizedPromotionError(RuntimeError):
+    """Raised when an unapproved or synthetic approval attempts to promote to production."""
+
+
 @runtime_checkable
 class EvolutionProvider(Protocol):
     @property

@@ -1,0 +1,6 @@
+# OpenJiuwen Agent Core Runtime Baseline
+# Source repository: https://github.com/openJiuwen-ai/agent-core.git
+# Source branch: release/v0.1.19
+# Resolved exact commit SHA: 6f3a33fbb93aece65105c477c573057fead0e8dd
+# Runtime metadata note: package metadata reports 0.1.18 when installed from this commit
+openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@6f3a33fbb93aece65105c477c573057fead0e8dd

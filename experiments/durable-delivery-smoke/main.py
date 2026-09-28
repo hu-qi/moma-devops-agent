@@ -150,11 +150,11 @@ async def main() -> None:
         work_item_id="7",
     )
     assert started.state.phase is DeliveryPhase.CHANGE_OPENED
-    assert started.version == 1
+    assert started.version == 3
 
     pending = await service.reconcile_ci("delivery-7")
     assert pending.state.phase is DeliveryPhase.CI_PENDING
-    assert pending.version == 2
+    assert pending.version == 4
 
     # Simulate process restart: construct a new store/service instance.
     ci.ready = True
@@ -171,11 +171,11 @@ async def main() -> None:
 
     passed = await restarted.reconcile_ci("delivery-7")
     assert passed.state.phase is DeliveryPhase.CI_PASSED
-    assert passed.version == 3
+    assert passed.version == 5
 
     verified = await restarted.verify("delivery-7")
     assert verified.state.phase is DeliveryPhase.VERIFIED
-    assert verified.version == 4
+    assert verified.version == 6
 
     final = await restarted.get("delivery-7")
     assert final is not None

@@ -19,6 +19,7 @@ from devopspilot.contracts.remediation import (
     RemediationLedger,
     RemediationOutcome,
     RemediationRecord,
+    RemediationStatus,
 )
 
 
@@ -208,19 +209,38 @@ class AutonomousDeliveryControlPlane:
                     phase=DeliveryPhase.REJECTED,
                     verification=VerificationResult(False, reason, analysis.evidence),
                 )
-            queued = await self._ci.retry_failed(state.ci_run)
-            await self._ledger.append(
-                RemediationRecord(
-                    delivery_id=delivery_id,
-                    attempt=attempt,
-                    failure_kind=analysis.kind,
-                    action=decision.action,
-                    outcome=RemediationOutcome.COMPLETED,
-                    summary=decision.reason,
-                    previous_commit_sha=state.execution.commit_sha,
-                    evidence=analysis.evidence,
-                )
+
+            # Reserve attempt before performing external CI retry
+            record = await self._ledger.reserve_attempt(
+                delivery_id=delivery_id,
+                attempt=attempt,
+                failure_kind=analysis.kind,
+                action=decision.action,
+                previous_commit_sha=state.execution.commit_sha,
+                evidence=analysis.evidence,
             )
+            try:
+                queued = await self._ci.retry_failed(state.ci_run)
+                await self._ledger.update(
+                    replace(
+                        record,
+                        outcome=RemediationOutcome.COMPLETED,
+                        status=RemediationStatus.COMPLETED,
+                        summary=decision.reason,
+                    )
+                )
+            except Exception as exc:
+                await self._ledger.update(
+                    replace(
+                        record,
+                        outcome=RemediationOutcome.FAILED,
+                        status=RemediationStatus.FAILED,
+                        summary=f"CI retry attempt {attempt} failed: {exc}",
+                        error_message=str(exc),
+                    )
+                )
+                raise
+
             return replace(
                 state,
                 phase=DeliveryPhase.CI_PENDING,
@@ -229,31 +249,50 @@ class AutonomousDeliveryControlPlane:
                 verification=None,
             )
 
-        result = await self._remediator.remediate(
-            state,
-            analysis,
+        # Reserve attempt before performing external remediator execution & push
+        record = await self._ledger.reserve_attempt(
+            delivery_id=delivery_id,
             attempt=attempt,
+            failure_kind=analysis.kind,
+            action=decision.action,
+            previous_commit_sha=state.execution.commit_sha,
+            evidence=analysis.evidence,
         )
-        if not result.published:
-            raise RuntimeError("RemediationExecutor must publish the repair commit")
-        if result.source_branch != state.execution.source_branch:
-            raise RuntimeError("Remediation must update the existing source branch")
-        if result.commit_sha == state.execution.commit_sha:
-            raise RuntimeError("Remediation must produce a new commit")
 
-        await self._ledger.append(
-            RemediationRecord(
-                delivery_id=delivery_id,
+        try:
+            result = await self._remediator.remediate(
+                state,
+                analysis,
                 attempt=attempt,
-                failure_kind=analysis.kind,
-                action=decision.action,
-                outcome=RemediationOutcome.COMPLETED,
-                summary=decision.reason,
-                previous_commit_sha=state.execution.commit_sha,
-                resulting_commit_sha=result.commit_sha,
-                evidence=analysis.evidence,
             )
-        )
+            if not result.published:
+                raise RuntimeError("RemediationExecutor must publish the repair commit")
+            if result.source_branch != state.execution.source_branch:
+                raise RuntimeError("Remediation must update the existing source branch")
+            if result.commit_sha == state.execution.commit_sha:
+                raise RuntimeError("Remediation must produce a new commit")
+
+            await self._ledger.update(
+                replace(
+                    record,
+                    outcome=RemediationOutcome.COMPLETED,
+                    status=RemediationStatus.COMPLETED,
+                    summary=decision.reason,
+                    resulting_commit_sha=result.commit_sha,
+                )
+            )
+        except Exception as exc:
+            await self._ledger.update(
+                replace(
+                    record,
+                    outcome=RemediationOutcome.FAILED,
+                    status=RemediationStatus.FAILED,
+                    summary=f"Remediation patch attempt {attempt} failed: {exc}",
+                    error_message=str(exc),
+                )
+            )
+            raise
+
         return replace(
             state,
             phase=DeliveryPhase.CI_PENDING,

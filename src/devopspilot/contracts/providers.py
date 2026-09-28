@@ -30,6 +30,18 @@ class CICapability(StrEnum):
     ARTIFACTS = "artifacts"
 
 
+class UnsupportedCapabilityError(RuntimeError):
+    """Raised when an operation requires an unsupported provider capability."""
+
+    def __init__(self, provider_id: str, capability: str, message: str = "") -> None:
+        self.provider_id = provider_id
+        self.capability = capability
+        msg = f"Provider '{provider_id}' does not support capability '{capability}'"
+        if message:
+            msg += f": {message}"
+        super().__init__(msg)
+
+
 class ReviewState(StrEnum):
     COMMENT = "comment"
     APPROVE = "approve"
@@ -109,6 +121,8 @@ class CIRunRef:
     conclusion: str | None = None
     commit_sha: str | None = None
     web_url: str | None = None
+    check_name: str = ""
+    attempt: int = 1
 
 
 @dataclass(frozen=True, slots=True)

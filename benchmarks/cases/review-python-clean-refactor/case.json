@@ -1,0 +1,56 @@
+{
+  "id": "review.python.clean_refactor.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "title": "Clean refactored authentication module review",
+  "description": "Review a safe and compliant refactored auth module. Expected verdict is approved, with zero false positives.",
+  "task": "Review auth_service.py. It has no security defects. Approve the change without raising spurious findings.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "auth_service.py",
+    "contains": [
+      "def verify_token",
+      "secrets.compare_digest"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "expected_verdict": "approved",
+    "required_findings": [],
+    "forbidden_false_positives": [
+      "timing-attack",
+      "sql-injection",
+      "plaintext-password"
+    ],
+    "min_recall": 1.0,
+    "max_false_positives": 0
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "security",
+    "clean-code",
+    "review",
+    "false-positive-test"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic benchmark fixture",
+    "license": "Apache-2.0",
+    "notes": "Created for testing review false-positive resistance on clean code."
+  }
+}

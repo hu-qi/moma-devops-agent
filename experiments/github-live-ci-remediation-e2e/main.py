@@ -246,6 +246,8 @@ async def find_external_change_request(
         if (
             str(item.get("title", "")).startswith("[Remediation E2E]")
             and issue_marker in str(item.get("body") or "")
+            and str((item.get("head") or {}).get("ref") or "").startswith("devopspilot/")
+            and str((item.get("head") or {}).get("ref") or "") not in {"main", "master", target_branch}
         )
     ]
     if not candidates:
@@ -515,13 +517,19 @@ async def main() -> None:
             "state_reason": "completed",
         },
     )
-    await git(
-        "push",
-        "origin",
-        "--delete",
-        source_branch,
-        check=False,
-    )
+    if (
+        source_branch.startswith("devopspilot/")
+        and source_branch not in {"main", "master", target_branch, "devopspilot/fixture-ci-remediation"}
+    ):
+        await git(
+            "push",
+            "origin",
+            "--delete",
+            source_branch,
+            check=False,
+        )
+    else:
+        print(f"Preserving protected or non-ephemeral branch: {source_branch}")
 
     print(
         "GITHUB_LIVE_REMEDIATION_INITIAL_CI_FAILED_OK"

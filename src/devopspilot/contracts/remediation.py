@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
@@ -25,6 +26,16 @@ class RemediationAction(StrEnum):
 class RemediationOutcome(StrEnum):
     COMPLETED = "completed"
     ESCALATED = "escalated"
+    FAILED = "failed"
+    PENDING = "pending"
+
+
+class RemediationStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    ESCALATED = "escalated"
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +56,10 @@ class RemediationRecord:
     previous_commit_sha: str
     resulting_commit_sha: str | None = None
     evidence: tuple[str, ...] = ()
+    status: RemediationStatus = RemediationStatus.COMPLETED
+    error_message: str = ""
+    created_at: float = 0.0
+    updated_at: float = 0.0
 
 
 @runtime_checkable
@@ -62,7 +77,6 @@ class RemediationExecutor(Protocol):
         *,
         attempt: int,
     ) -> ExecutionResult:
-        """Publish a repair commit to the existing source branch."""
         ...
 
 
@@ -72,4 +86,20 @@ class RemediationLedger(Protocol):
         ...
 
     async def append(self, record: RemediationRecord) -> None:
+        ...
+
+    async def reserve_attempt(
+        self,
+        delivery_id: str,
+        attempt: int,
+        failure_kind: CIFailureKind,
+        action: RemediationAction,
+        previous_commit_sha: str,
+        evidence: tuple[str, ...] = (),
+    ) -> RemediationRecord:
+        """Reserve an attempt in the ledger before performing external actions."""
+        ...
+
+    async def update(self, record: RemediationRecord) -> None:
+        """Update an existing attempt record (e.g. from running to completed/failed)."""
         ...

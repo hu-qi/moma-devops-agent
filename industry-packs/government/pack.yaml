@@ -7,23 +7,32 @@ description: "面向信创与数字政务系统的自主研发规范包，提供
 compliance_rules:
   - rule_id: GOV-COMP-001
     name: "等保 2.0 关键操作审计留痕"
+    category: "mandatory"
     standard: "GB/T 22239-2019"
+    authority_source: "GB/T 22239-2019 第 7.1.4.3 条 安全审计"
+    applicability_condition: "关键业务状态变更、权限变更、账户鉴权与配置读写接口"
     severity: "critical"
     description: "所有关键业务状态变更、权限变更和用户访问必须输出规范的审计日志，包含操作者身份、时间戳、源 IP、操作类型及变更前后摘要。"
     remediation_guidance: "引入结构化审计日志切面，记录 operator_id, event_type, target_resource 及 trace_id，严禁关键数据缺失或无迹可寻。"
 
   - rule_id: GOV-COMP-002
     name: "敏感政务数据存储与传输脱敏"
+    category: "mandatory"
     standard: "GB/T 35273-2020"
+    authority_source: "GB/T 35273-2020 第 5.4 条 个人敏感信息处理规范"
+    applicability_condition: "代码中涉及公民身份证号、手机号、明文口令的日志打印与外部输出"
     severity: "critical"
     description: "涉及公民身份证、手机号、政务统一信用代码等核心敏感字段，在日志打印、前端展示和跨域传输时必须强制脱敏。"
     remediation_guidance: "使用标准脱敏掩码工具对身份证号保留前6后4，手机号保留前3后4，不得明文输出至日志或未受信终端。"
 
   - rule_id: GOV-COMP-003
     name: "信创环境国产化架构兼容性"
+    category: "advisory"
     standard: "信创基础软硬件适配指南"
+    authority_source: "信创基础软硬件生态适配通用工程建议"
+    applicability_condition: "底层编译构建、动态链接库与系统调用"
     severity: "warning"
-    description: "底层依赖与编译构建必须支持 ARM64 / AArch64 (鲲鹏/飞腾) 与 LoongArch 架构，严禁强绑定 x86_64 专有汇编指令。"
+    description: "底层依赖与编译构建建议支持 ARM64 / AArch64 (鲲鹏/飞腾) 与 LoongArch 架构，避免强绑定 x86_64 专有汇编指令。"
     remediation_guidance: "在 Makefile / Dockerfile / 依赖声明中配置跨架构编译，避免调用平台专有动态链接库。"
 
 architecture_constraints:
@@ -65,8 +74,8 @@ review_checklist:
 
 test_gates:
   - gate_id: GOV-GATE-AUDIT
-    name: "Audit Log Integrity Check"
-    command: "python -c 'print(\"Audit Gate Checked: PASS\")'"
+    name: "Audit Log & Sensitive Data Masking Verification Gate"
+    command: "python -m devopspilot.industry.rules.gov_audit_checker ."
     timeout_seconds: 60
     required: true
 

@@ -17,6 +17,10 @@ on:
         default: devopspilot/fixture-ci-remediation
         type: string
 
+concurrency:
+  group: github-live-remediation-fixture-${{ inputs.target_branch || 'devopspilot/fixture-ci-remediation' }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -69,12 +73,24 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin "+refs/heads/*:refs/remotes/origin/*"
-          git checkout -B "$TARGET_BRANCH" origin/main
-          python e2e/fixtures/ci_remediation/reset.py
-          python e2e/fixtures/ci_remediation/reset.py --check
-          git add e2e/fixtures/ci_remediation/app.py
-          if ! git diff --cached --quiet; then
-            git -c user.name=DevOpsPilot -c user.email=devopspilot@local               commit -m "test: reset CI remediation fixture"
+          if ! git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+            echo "Branch $TARGET_BRANCH does not exist on remote; bootstrapping from origin/main..."
+            git checkout -B "$TARGET_BRANCH" origin/main
+            python e2e/fixtures/ci_remediation/reset.py
+            git add e2e/fixtures/ci_remediation/app.py
+            git -c user.name=DevOpsPilot -c user.email=devopspilot@local \
+              commit -m "chore(fixture): bootstrap CI remediation fixture branch"
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+            echo "Bootstrap completed: $TARGET_BRANCH"
+          else
+            git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+            python e2e/fixtures/ci_remediation/reset.py
+            git add e2e/fixtures/ci_remediation/app.py
+            if ! git diff --cached --quiet; then
+              git -c user.name=DevOpsPilot -c user.email=devopspilot@local \
+                commit -m "test: reset CI remediation fixture"
+              git push --force-with-lease origin "HEAD:refs/heads/$TARGET_BRANCH"
+            fi
           fi
-          git push --force-with-lease origin "HEAD:refs/heads/$TARGET_BRANCH"
+          python e2e/fixtures/ci_remediation/reset.py --check
           echo "CI_REMEDIATION_FIXTURE_BRANCH_RESET_OK branch=$TARGET_BRANCH"

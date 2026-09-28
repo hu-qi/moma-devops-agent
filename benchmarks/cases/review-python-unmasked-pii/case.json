@@ -1,0 +1,58 @@
+{
+  "id": "review.python.unmasked_pii.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "title": "Python unmasked PII logging review",
+  "description": "Identify unmasked citizen ID and phone number logging and report security violations.",
+  "task": "Review user_service.py and report compliance/security findings for plaintext PII logging. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "user_service.py",
+    "contains": [
+      "110101199003072345",
+      "logger.info"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "expected_verdict": "rejected",
+    "required_findings": [
+      "unmasked-pii",
+      "citizen-id",
+      "phone-masking"
+    ],
+    "forbidden_false_positives": [
+      "sql-injection"
+    ],
+    "min_recall": 0.6,
+    "max_false_positives": 0
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": "government",
+  "tags": [
+    "python",
+    "security",
+    "pii",
+    "review",
+    "government"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic benchmark fixture",
+    "license": "Apache-2.0",
+    "notes": "Created for deterministic structured review evaluation."
+  }
+}

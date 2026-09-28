@@ -15,7 +15,8 @@ on:
         type: string
 
 concurrency:
-  group: github-live-remediation-e2e-${{ github.run_id }}
+  # Protect the shared fixture branch from concurrent modification and deletion
+  group: github-live-remediation-fixture-${{ inputs.target_branch }}
   cancel-in-progress: false
 
 permissions:
@@ -32,7 +33,7 @@ env:
   MOMA_CODING_MODEL: ${{ vars.MOMA_CODING_MODEL || 'Qwen3-32B' }}
   MOMA_REVIEW_MODEL: ${{ vars.MOMA_REVIEW_MODEL || 'deepseek-v4.1-flash' }}
   DEVOPSPILOT_E2E_ISSUE: ${{ inputs.issue_number || '4' }}
-  DEVOPSPILOT_TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
+  DEVOPSPILOT_TARGET_BRANCH: ${{ inputs.target_branch || 'devopspilot/fixture-ci-remediation' }}
 
 jobs:
   remediation:
@@ -41,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: true
 
@@ -61,10 +63,41 @@ jobs:
           test -n "$DEVOPSPILOT_E2E_ISSUE"
           test -n "$DEVOPSPILOT_TARGET_BRANCH"
 
-      - name: Install OpenJiuwen release line
+      - name: Bootstrap and reset fixture base branch
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ env.DEVOPSPILOT_TARGET_BRANCH }}
+        run: |
+          set -euo pipefail
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+          if ! git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+            echo "Fixture branch $TARGET_BRANCH does not exist on remote; bootstrapping from origin/main..."
+            git checkout -B "$TARGET_BRANCH" origin/main
+            python e2e/fixtures/ci_remediation/reset.py
+            git add e2e/fixtures/ci_remediation/app.py
+            git -c user.name=DevOpsPilot -c user.email=devopspilot@local \
+              commit -m "chore(fixture): bootstrap CI remediation fixture branch"
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+            echo "Bootstrap completed: $TARGET_BRANCH"
+          else
+            echo "Fixture branch $TARGET_BRANCH exists on remote; ensuring clean broken state..."
+            git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+            python e2e/fixtures/ci_remediation/reset.py
+            if ! git diff --quiet e2e/fixtures/ci_remediation/app.py; then
+              git add e2e/fixtures/ci_remediation/app.py
+              git -c user.name=DevOpsPilot -c user.email=devopspilot@local \
+                commit -m "test: reset CI remediation fixture"
+              git push --force-with-lease origin "HEAD:refs/heads/$TARGET_BRANCH"
+            fi
+          fi
+          # Verify reset succeeded; failure blocks E2E execution
+          python e2e/fixtures/ci_remediation/reset.py --check
+          echo "FIXTURE_BOOTSTRAP_AND_RESET_VERIFIED branch=$TARGET_BRANCH"
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "openjiuwen[observability,sqlite] @ git+https://github.com/openJiuwen-ai/agent-core.git@release/v0.1.19"
+          pip install -e ".[runtime]"
 
       - name: Run live CI failure remediation loop
         env:

@@ -7,6 +7,32 @@ from pathlib import Path
 from typing import Mapping, Protocol, runtime_checkable
 
 from .delivery import DeliveryTask, ExecutionResult
+from .review import (
+    MissingReviewError,
+    ReviewFinding,
+    ReviewGateError,
+    ReviewRejectedError,
+    ReviewResult,
+    ReviewTimeoutError,
+    ReviewVerdict,
+    StaleReviewError,
+    enforce_review_gate,
+)
+
+__all__ = (
+    "ExecutionWorkspace",
+    "WorkspaceProvider",
+    "ChangePublisher",
+    "ReviewVerdict",
+    "ReviewFinding",
+    "ReviewResult",
+    "ReviewGateError",
+    "MissingReviewError",
+    "ReviewRejectedError",
+    "StaleReviewError",
+    "ReviewTimeoutError",
+    "enforce_review_gate",
+)
 
 
 @dataclass(frozen=True, slots=True)

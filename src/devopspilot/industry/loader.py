@@ -14,6 +14,7 @@ from devopspilot.contracts.industry import (
     IndustryEngineeringPack,
     IndustryTestGate,
     ReviewChecklistItem,
+    RuleCategory,
     RuleSeverity,
 )
 
@@ -26,7 +27,10 @@ def load_pack_from_dict(data: dict[str, Any]) -> IndustryEngineeringPack:
             name=r["name"],
             description=r["description"],
             severity=RuleSeverity(r.get("severity", "warning")),
+            category=RuleCategory(r.get("category", "mandatory")),
             standard=r.get("standard"),
+            authority_source=r.get("authority_source"),
+            applicability_condition=r.get("applicability_condition"),
             remediation_guidance=r.get("remediation_guidance"),
         )
         for r in data.get("compliance_rules", [])
