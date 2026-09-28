@@ -15,6 +15,42 @@ from devopspilot.contracts.delivery import DeliveryPhase
 from devopspilot.persistence.sqlite_state import SQLiteDeliveryStateStore
 
 
+def load_dotenv_if_present(path: Path | None = None) -> None:
+    """Zero-dependency loader for .env configuration files."""
+    candidates = []
+    if path:
+        candidates.append(path)
+    else:
+        # Check current working directory, then parent directories up to git root
+        cur = Path.cwd()
+        candidates.extend([cur / ".env", cur.parent / ".env"])
+        # Also check relative to this source file's project root
+        project_root = Path(__file__).resolve().parents[3]
+        candidates.append(project_root / ".env")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            try:
+                for line in candidate.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if line.startswith("export "):
+                        line = line[7:].strip()
+                    if "=" not in line:
+                        continue
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                        val = val[1:-1]
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+                break
+            except Exception:
+                pass
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="devopspilot",
@@ -390,6 +426,7 @@ async def run_cli(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv_if_present()
     parser = build_parser()
     args = parser.parse_args(argv)
     return asyncio.run(run_cli(args))
