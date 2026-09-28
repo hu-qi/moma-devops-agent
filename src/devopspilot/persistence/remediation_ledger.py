@@ -24,7 +24,9 @@ class RemediationLedgerConflict(RuntimeError):
 
 class SQLiteRemediationLedger(RemediationLedger):
     def __init__(self, path: str | Path) -> None:
-        self._path = str(path)
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self._path = str(p)
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
