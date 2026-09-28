@@ -126,7 +126,7 @@ Evolution gate/audit/registry 有价值，但继续扩充 Swarm Skill 类型不�
 
 在主链验收前暂缓：新增第三/第四行业包、六平台同时完善、重型 Web 后台、自动部署、多种新进化对象。保留已有代码，不删除未完成探索。
 
-详细任务与完成条件见根目录 [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) 与 [TODO.md](../TODO.md)。
+详细任务与完成条件见根目录 [TODO.md](../TODO.md) 及 [历史阶段计划](plans/implementation-plan-2026-09-26-archived.md)。
 
 ## 5. 最终验收标准
 

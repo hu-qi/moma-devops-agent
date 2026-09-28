@@ -27,14 +27,15 @@
 | [35877219890](https://github.com/hu-qi/moma-devops-agent/actions/runs/35877219890) | MoMA Capability Spikes | 历史 Commit | MoMA API | SUCCESS | 无 | 验证 MoMA 角色模型分发与推理链路。 |
 | [AtomGit-Issue-1](https://gitcode.com/huqi/DevOpsPilot-Test/issues/1) | T25 AtomGit 真实仓库 Issue 交付 | `2160c8b` | AtomGit | SUCCESS | 无人工直接修改代码 | 真实创建并关联任务 Issue #1 与提交。 |
 | [AtomGit-MR-1](https://gitcode.com/huqi/DevOpsPilot-Test/merge_requests/1) | T25 AtomGit 真实 MR 交付与能力边界核验 | `2160c8b` | AtomGit | SUCCESS | **能力边界收缩**：原生 Actions Runs API unsupported，依赖外部 Runner/Webhook | 验证真实分支 `feat/health-check` 推送、OpenAPI 创建 MR #1，并严格收缩国产平台 CI 能力声明。 |
+| [AtomGit-Issue-2](https://atomgit.com/huqi/DevOpsPilot-Test/issues/2) | 只读 Issue 意图分流与直接评论交付 (`deliv-b424ceed`) | `60c8622` | AtomGit + MoMA | SUCCESS | **只读问答闭环**：分类为 `inquiry`，直接回复结构化文件清单 | 验证不建分支、不开 PR、不写脏代码；`strip_think_tags` 完全剔除思考内容，结构化 Markdown 回复。 |
 
 ---
 
 ## 3. 当前离线基线与验证结果 (Current Verification)
 
-- **基线日期**: 2026-09-26
-- **执行命令**: `python scripts/run_offline_checks.py`
-- **通过率**: 40 项检查全部通过 (100%)
+- **基线日期**: 2026-09-28 (全量回归加固完成)
+- **执行命令**: `python3 scripts/run_offline_checks.py`
+- **通过率**: 40 项离线检查全部通过 (100% PASS, 0 failed, 0 degraded)
 - **包含套件**:
   1. `provider-contract-smoke` (PASS)
   2. `model-routing-smoke` (PASS)
