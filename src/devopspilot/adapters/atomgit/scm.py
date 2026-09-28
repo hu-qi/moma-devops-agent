@@ -120,7 +120,7 @@ class AtomGitSCMProvider:
             repository_id=str(data["id"]),
             full_name=data["full_name"],
             default_branch=data.get("default_branch"),
-            web_url=data.get("html_url"),
+            web_url=data.get("web_url") or data.get("html_url"),
         )
 
     async def list_issues(

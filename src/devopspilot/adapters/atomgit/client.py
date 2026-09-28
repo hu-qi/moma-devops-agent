@@ -46,7 +46,7 @@ class AtomGitAPIClient(Protocol):
 @dataclass(slots=True)
 class AtomGitHTTPClient:
     token: str | None = None
-    base_url: str = "https://api.atomgit.com"
+    base_url: str = "https://api.atomgit.com/api/v5"
     timeout_seconds: float = 30.0
 
     def _build_request(
