@@ -125,3 +125,72 @@ class GitWorktreeWorkspaceProvider:
         await process.communicate()
 
         await _git("worktree", "prune", cwd=self._repository_path)
+
+
+class AutoCloningWorktreeWorkspaceProvider:
+    """Prepare a Git worktree, automatically cloning or updating the base repo if needed."""
+
+    def __init__(
+        self,
+        repository_id: str,
+        clone_url: str,
+        *,
+        cache_dir: str | Path | None = None,
+        branch_prefix: str = "devopspilot",
+        clone_auth_args: tuple[str, ...] | list[str] = (),
+    ) -> None:
+        self._repository_id = repository_id
+        self._clone_url = clone_url
+        # C06: per-invocation auth via `-c http.extraHeader=...`; never persisted in URL
+        self._clone_auth_args = tuple(clone_auth_args)
+        self._cache_dir = Path(cache_dir).resolve() if cache_dir else (Path.home() / ".devopspilot" / "repos")
+        self._branch_prefix = branch_prefix
+        self._inner_provider: GitWorktreeWorkspaceProvider | None = None
+
+    async def _resolve_repo_path(self, target_branch: str) -> Path:
+        # 1. Check if current working directory is the repository
+        cwd = Path.cwd()
+        if (cwd / ".git").exists():
+            try:
+                origin_url = await _git("remote", "get-url", "origin", cwd=cwd)
+                if self._repository_id.lower() in origin_url.lower():
+                    return cwd
+            except Exception:
+                pass
+
+        # 2. Check or create in cache_dir
+        repo_dir = self._cache_dir / self._repository_id
+        if not repo_dir.exists():
+            repo_dir.parent.mkdir(parents=True, exist_ok=True)
+            print(f"[Workspace] Cloning repository {self._repository_id} into {repo_dir}...")
+            await _git("clone", *self._clone_auth_args, self._clone_url, str(repo_dir), cwd=repo_dir.parent)
+        else:
+            # Fetch latest (auth via extraHeader args, URL stays credential-free)
+            try:
+                await _git("fetch", *self._clone_auth_args, "origin", cwd=repo_dir)
+            except Exception as exc:
+                print(f"[Workspace] Fetch origin warning: {exc}")
+
+        # Ensure target_branch exists locally
+        try:
+            await _git("rev-parse", "--verify", target_branch, cwd=repo_dir)
+        except Exception:
+            # Try to checkout or create branch tracking origin
+            try:
+                await _git("branch", target_branch, f"origin/{target_branch}", cwd=repo_dir)
+            except Exception:
+                pass
+
+        return repo_dir
+
+    async def prepare(self, task: DeliveryTask) -> ExecutionWorkspace:
+        repo_path = await self._resolve_repo_path(task.target_branch)
+        self._inner_provider = GitWorktreeWorkspaceProvider(
+            repo_path,
+            branch_prefix=self._branch_prefix,
+        )
+        return await self._inner_provider.prepare(task)
+
+    async def cleanup(self, workspace: ExecutionWorkspace) -> None:
+        if self._inner_provider:
+            await self._inner_provider.cleanup(workspace)

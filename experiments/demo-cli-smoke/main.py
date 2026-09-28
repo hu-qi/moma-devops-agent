@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -38,10 +39,11 @@ def test_cli_demo_deterministic_mode() -> None:
     with redirect_stdout(buf):
         exit_code = cli_main(["demo", "--mode", "deterministic"])
     out = buf.getvalue()
+    # C09: deterministic demo runs the real local fixture suite; no fabricated
+    # "VERIFIED CLEAN" print, no invented review verdicts.
     assert exit_code == 0
-    assert "Deterministic Fallback Mode" in out
-    assert "single_agent" in out
-    assert "VERIFIED CLEAN" in out
+    assert "Deterministic" in out
+    assert "local integration fixture suite" in out
     print("CLI_DEMO_DETERMINISTIC_MODE_OK")
 
 
@@ -50,21 +52,36 @@ def test_cli_demo_recorded_mode() -> None:
     with redirect_stdout(buf):
         exit_code = cli_main(["demo", "--mode", "recorded"])
     out = buf.getvalue()
+    # C09: recorded demo lists actual saved evidence artifacts only.
     assert exit_code == 0
-    assert "Recorded Trajectory" in out
-    assert "36086881849" in out
-    assert "agentteam_timeout 240s" in out
+    assert "Recorded Evidence" in out
+    assert "no fabricated run summaries" in out
     print("CLI_DEMO_RECORDED_MODE_OK")
 
 
 def test_cli_demo_live_mode_safe_prompt_without_tokens() -> None:
-    buf = io.StringIO()
-    with redirect_stdout(buf):
-        exit_code = cli_main(["demo", "--mode", "live"])
-    out = buf.getvalue()
-    assert exit_code == 0
-    # Must give guidance when tokens are not present
-    assert "Notice: Live mode requires" in out or "Starting live" in out
+    # Ensure the no-credentials branch is actually exercised even on machines
+    # whose .env provides real tokens (C01-style offline isolation for this test).
+    saved = {v: os.environ.pop(v, None) for v in ("GITHUB_TOKEN", "MOMA_API_KEY")}
+    old_no_dotenv = os.environ.get("DEVOPSPILOT_NO_DOTENV")
+    os.environ["DEVOPSPILOT_NO_DOTENV"] = "1"
+    try:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            exit_code = cli_main(["demo", "--mode", "live"])
+        out = buf.getvalue()
+    finally:
+        for k, v in saved.items():
+            if v is not None:
+                os.environ[k] = v
+        if old_no_dotenv is not None:
+            os.environ["DEVOPSPILOT_NO_DOTENV"] = old_no_dotenv
+        else:
+            os.environ.pop("DEVOPSPILOT_NO_DOTENV", None)
+    # C09: missing credentials is a user error -> non-zero exit with guidance,
+    # never a fabricated success.
+    assert exit_code != 0
+    assert "Notice: Live mode requires" in out
     print("CLI_DEMO_LIVE_MODE_SAFE_PROMPT_OK")
 
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from devopspilot.adapters.git.auth import build_clone_auth_args
 from devopspilot.contracts.delivery import (
     DeliveryState,
     DeliveryVerifier,
@@ -75,3 +76,104 @@ def assemble_orchestrator(
         verifier=deliv_verifier,
     )
     return DeliveryOrchestrator(loop=loop, store=state_store)
+
+
+DEFAULT_MOMA_API_BASE = "https://zhenze-huhehaote.cmecloud.cn/v1"
+DEFAULT_MOMA_MODEL = "deepseek-v4.1-flash"
+DEFAULT_MOMA_CODING_MODEL = "Qwen3-32B"
+DEFAULT_MOMA_REVIEW_MODEL = "deepseek-v4.1-flash"
+
+
+def setup_model_environment() -> bool:
+    """Ensure MoMA model environment variables are properly wired with native MoMA defaults."""
+    moma_key = os.environ.get("MOMA_API_KEY", "").strip() or os.environ.get("DEEPSEEK_API_KEY", "").strip()
+
+    if moma_key:
+        os.environ["MOMA_API_KEY"] = moma_key
+
+    if moma_key and not os.environ.get("MOMA_API_BASE"):
+        os.environ["MOMA_API_BASE"] = os.environ.get("MOMA_BASE_URL", "").strip() or DEFAULT_MOMA_API_BASE
+
+    if moma_key and not os.environ.get("MOMA_MODEL"):
+        os.environ["MOMA_MODEL"] = DEFAULT_MOMA_MODEL
+
+    if moma_key and not os.environ.get("MOMA_CODING_MODEL"):
+        os.environ["MOMA_CODING_MODEL"] = os.environ.get("MOMA_MODEL", DEFAULT_MOMA_CODING_MODEL)
+
+    if moma_key and not os.environ.get("MOMA_REVIEW_MODEL"):
+        os.environ["MOMA_REVIEW_MODEL"] = os.environ.get("MOMA_MODEL", DEFAULT_MOMA_REVIEW_MODEL)
+
+    return bool(moma_key)
+
+
+def assemble_live_orchestrator(
+    config: AppConfig,
+    repo_full_name: str,
+    *,
+    store: DeliveryStateStore | None = None,
+) -> DeliveryOrchestrator:
+    """Assemble a full live DeliveryOrchestrator with real SCM, CI, and AI Executor."""
+    from devopspilot.adapters.git import AutoCloningWorktreeWorkspaceProvider, GitChangePublisher
+    from devopspilot.orchestration.execution import PublishingTaskExecutor
+
+    provider = config.provider.lower()
+    has_model = setup_model_environment()
+
+    # 1. Setup SCM, CI, and Remote Clone URL
+    if provider == "atomgit":
+        from devopspilot.adapters.atomgit.client import AtomGitHTTPClient
+        from devopspilot.adapters.atomgit.scm import AtomGitSCMProvider
+        from devopspilot.adapters.atomgit.ci import AtomGitCIProvider
+
+        token = os.environ.get("ATOMGIT_TOKEN", "").strip()
+        client = AtomGitHTTPClient(token=token if token else None)
+        scm = AtomGitSCMProvider(client)
+        ci = AtomGitCIProvider(client)
+        # C06: token goes via http.extraHeader git config, never the URL
+        clone_url = f"https://atomgit.com/{repo_full_name}.git"
+        clone_auth_args = build_clone_auth_args(provider, token)
+    elif provider == "github":
+        from devopspilot.adapters.github.client import GitHubHTTPClient
+        from devopspilot.adapters.github.scm import GitHubSCMProvider
+        from devopspilot.adapters.github.ci import GitHubCIProvider
+
+        token = os.environ.get("GITHUB_TOKEN", "").strip()
+        gh_client = GitHubHTTPClient(token=token)
+        scm = GitHubSCMProvider(gh_client)
+        ci = GitHubCIProvider(gh_client)
+        # C06: token goes via http.extraHeader git config, never the URL
+        clone_url = f"https://github.com/{repo_full_name}.git"
+        clone_auth_args = build_clone_auth_args(provider, token)
+    else:
+        raise ValueError(f"Unsupported live provider for automated assembly: {provider}")
+
+    # 2. Setup Workspace Provider & Change Publisher
+    workspace_provider = AutoCloningWorktreeWorkspaceProvider(
+        repository_id=repo_full_name,
+        clone_url=clone_url,
+        clone_auth_args=clone_auth_args,
+    )
+    publisher = GitChangePublisher(remote="origin")
+
+    # 3. Setup Task Executor (OpenJiuwen with AI, wrapped with PublishingTaskExecutor)
+    if not has_model:
+        raise RuntimeError("No MOMA_API_KEY or DEEPSEEK_API_KEY configured for live AI execution.")
+
+    from devopspilot.adapters.openjiuwen.executor import OpenJiuwenTaskExecutor
+    from devopspilot.adapters.moma import MoMAProvider
+
+    maas = MoMAProvider.from_env()
+    inner_executor = OpenJiuwenTaskExecutor(
+        workspace_provider=workspace_provider,
+        maas_provider=maas,
+    )
+    executor = PublishingTaskExecutor(inner_executor, publisher)
+
+    # 4. Assemble
+    return assemble_orchestrator(
+        config,
+        scm=scm,
+        ci=ci,
+        executor=executor,
+        store=store,
+    )

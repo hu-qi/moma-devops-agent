@@ -1,0 +1,90 @@
+[
+  {
+    "case": "标题覆盖正文",
+    "input": {
+      "title": "分析登录失败原因",
+      "body": "请修复认证逻辑并添加回归测试"
+    },
+    "intent": "inquiry",
+    "reason": "Title pattern '分析登录失败原因' matches direct inquiry/analysis"
+  },
+  {
+    "case": "标签覆盖正文",
+    "input": {
+      "title": "登录异常",
+      "body": "修复认证逻辑",
+      "labels": [
+        "help wanted"
+      ]
+    },
+    "intent": "inquiry",
+    "reason": "Label matched inquiry intent ({'help wanted'})"
+  },
+  {
+    "case": "文档修改",
+    "input": {
+      "title": "更新部署说明",
+      "body": "修改 README 并提交 PR"
+    },
+    "intent": "inquiry",
+    "reason": "Work item requests information/analysis/listing with no code modification verbs"
+  },
+  {
+    "case": "否定动作",
+    "input": {
+      "title": "不要修改代码，只解释 fix 的含义"
+    },
+    "intent": "code_change",
+    "reason": "Work item entails code modification and delivery via PR"
+  },
+  {
+    "case": "空输入",
+    "input": {
+      "title": ""
+    },
+    "intent": "code_change",
+    "reason": "Work item entails code modification and delivery via PR"
+  },
+  {
+    "case": "英文子串",
+    "input": {
+      "title": "Explain address parsing"
+    },
+    "intent": "code_change",
+    "reason": "Work item entails code modification and delivery via PR"
+  },
+  {
+    "case": "混合任务",
+    "input": {
+      "title": "评估方案并落地",
+      "body": "将缓存接入服务，补充单元测试"
+    },
+    "intent": "inquiry",
+    "reason": "Work item requests information/analysis/listing with no code modification verbs"
+  },
+  {
+    "case": "显式code被模型覆盖",
+    "input": {
+      "title": "修复登录",
+      "metadata": {
+        "intent": "code_change"
+      }
+    },
+    "model_output": {
+      "intent": "INQUIRY"
+    },
+    "intent": "inquiry",
+    "model_calls": 1
+  },
+  {
+    "case": "非法枚举子串放行",
+    "input": {
+      "title": "修复登录"
+    },
+    "model_output": {
+      "intent": "NOT_INQUIRY"
+    },
+    "intent": "inquiry",
+    "model_calls": 1
+  }
+]

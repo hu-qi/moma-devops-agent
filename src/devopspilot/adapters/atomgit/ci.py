@@ -49,14 +49,17 @@ class AtomGitCIProvider:
         *,
         commit_sha: str | None = None,
         branch: str | None = None,
+        ref: str | None = None,
         status: str | None = None,
         limit: int = 20,
     ) -> tuple[CIRunRef, ...]:
         query: dict[str, Any] = {"per_page": limit}
-        if commit_sha:
-            query["head_sha"] = commit_sha
-        if branch:
-            query["branch"] = branch
+        head_sha = commit_sha or (ref if ref and len(ref) >= 40 else None)
+        branch_name = branch or (ref if ref and len(ref) < 40 else None)
+        if head_sha:
+            query["head_sha"] = head_sha
+        if branch_name:
+            query["branch"] = branch_name
         if status:
             query["status"] = status
         data = await self._client.request_json(

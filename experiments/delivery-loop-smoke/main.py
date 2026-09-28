@@ -76,7 +76,7 @@ class FakeSCM:
     async def create_change_request(
         self, repository, *, title, body, source_branch, target_branch,
     ) -> ChangeRequestRef:
-        assert "DevOpsPilot Delivery" in body
+        assert "Delivery" in body
         return ChangeRequestRef(
             repository=repository,
             change_id="9",

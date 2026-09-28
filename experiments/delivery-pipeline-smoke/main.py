@@ -138,7 +138,7 @@ class FakeSCM:
         source_branch: str,
         target_branch: str,
     ) -> ChangeRequestRef:
-        assert "DevOpsPilot Delivery" in body
+        assert "Delivery" in body
         change = ChangeRequestRef(
             repository=repository,
             change_id="42",

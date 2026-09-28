@@ -168,6 +168,13 @@ class AtomGitSCMProvider:
             labels=tuple(l["name"] for l in data.get("labels", []) if isinstance(l, dict) and "name" in l),
         )
 
+    async def get_work_item(
+        self,
+        repository: RepositoryRef,
+        item_id: str,
+    ) -> WorkItemRef:
+        return await self.get_issue(repository, item_id)
+
     async def create_change_request(
         self,
         repository: RepositoryRef,
@@ -213,6 +220,21 @@ class AtomGitSCMProvider:
         )
         await self._client.request_json("POST", path, body={"body": body})
 
+    async def list_comments(
+        self,
+        subject: CommentSubjectRef,
+        *,
+        limit: int = 50,
+    ) -> tuple[dict, ...]:
+        """List issue comments (C09 idempotency support)."""
+        path = (
+            f"/repos/{subject.repository.full_name}/issues/{subject.subject_id}/comments"
+        )
+        data = await self._client.request_json("GET", path, params={"per_page": limit})
+        if isinstance(data, list):
+            return tuple(data)
+        return ()
+
     async def submit_review(
         self,
         change_request: ChangeRequestRef,
@@ -249,12 +271,13 @@ class AtomGitSCMProvider:
         base = data.get("base") or {}
         merged_at = data.get("merged_at")
         state = "merged" if merged_at else str(data.get("state", "open"))
+        num = str(data.get("number", ""))
         return ChangeRequestRef(
             repository=repository,
-            change_id=str(data["number"]),
+            change_id=num,
             title=str(data.get("title", "")),
             state=state,
             source_branch=str(head.get("ref", "")),
             target_branch=str(base.get("ref", "")),
-            web_url=data.get("html_url"),
+            web_url=data.get("html_url") or data.get("web_url") or f"https://atomgit.com/{repository.full_name}/pull/{num}",
         )

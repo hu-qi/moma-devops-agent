@@ -226,6 +226,9 @@ async def safe_shutdown_contract() -> None:
     with patch.dict(
         "sys.modules",
         {
+            # Declare a supported runtime version so the C06 fail-closed
+            # whitelist check accepts this explicitly mocked environment.
+            "openjiuwen": MagicMock(__version__="0.1.19"),
             "openjiuwen.core.sys_operation.local._rw_lock_manager": MagicMock(
                 ReadWriteLockManager=DummyLockManager
             ),

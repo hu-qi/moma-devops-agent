@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -35,12 +36,25 @@ class IndustryGateRunner:
 
         for gate in pack.test_gates:
             timeout_sec = float(gate.timeout_seconds or self._default_timeout)
+            # Gate commands like `python -m devopspilot.industry...` must be able to
+            # import devopspilot even when it is not installed into the interpreter
+            # running the gate (e.g. src-layout checkouts). Propagate PYTHONPATH.
+            gate_env: dict[str, str] | None = None
+            if "devopspilot" in gate.command:
+                # This file lives at src/devopspilot/industry/gate_runner.py,
+                # so parents[2] IS the src root — do not append another "src".
+                src_root = str(Path(__file__).resolve().parents[2])
+                existing = os.environ.get("PYTHONPATH", "")
+                parts = [p for p in (src_root, existing) if p]
+                gate_env = dict(os.environ)
+                gate_env["PYTHONPATH"] = os.pathsep.join(parts)
             try:
                 run_res = await run_controlled_command(
                     gate.command,
                     cwd=cwd,
                     timeout_seconds=timeout_sec,
                     require_non_empty=True,
+                    env=gate_env,
                 )
                 passed = (run_res.returncode == 0)
                 results.append(

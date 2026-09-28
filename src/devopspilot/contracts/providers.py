@@ -213,6 +213,16 @@ class SCMProvider(Protocol):
     ) -> None:
         ...
 
+    async def list_comments(
+        self,
+        subject: CommentSubjectRef,
+        *,
+        limit: int = 50,
+    ) -> tuple[dict, ...]:
+        """List comments on a subject (idempotency checks). Best-effort:
+        providers that do not support listing may raise NotImplementedError."""
+        raise NotImplementedError("list_comments not supported by this provider")
+
     async def submit_review(
         self,
         repository: RepositoryRef,

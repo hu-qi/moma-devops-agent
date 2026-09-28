@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Mapping
 
+from devopspilot.contracts.branding import BrandConfig
 from devopspilot.contracts.delivery import (
     DeliveryPhase,
     DeliveryState,
@@ -128,6 +129,7 @@ class DeliveryLoop:
             source_branch=state.execution.source_branch,
             target_branch=state.task.target_branch,
         )
+        brand = BrandConfig.from_env()
         await self._scm.add_comment(
             CommentSubjectRef(
                 repository=state.task.repository,
@@ -135,7 +137,7 @@ class DeliveryLoop:
                 kind=CommentSubjectKind.WORK_ITEM,
             ),
             body=(
-                f"DevOpsPilot opened change request {change.change_id} "
+                f"{brand.devopspilot_markdown} opened change request {change.change_id} "
                 f"from {state.execution.source_branch} for commit {state.execution.commit_sha}."
             ),
         )
@@ -206,16 +208,22 @@ class DeliveryLoop:
     @staticmethod
     def _change_body(state: DeliveryState) -> str:
         assert state.execution is not None
+        from devopspilot.utils.model_text import strip_think_tags
+
+        brand = BrandConfig.from_env()
+        clean_summary = strip_think_tags(state.execution.summary).strip()
         parts = [
-            "## DevOpsPilot Delivery",
+            f"## {brand.devopspilot_markdown} Delivery",
             "",
-            state.execution.summary,
+            clean_summary,
         ]
         if state.execution.test_summary:
-            parts.extend(["", "### Tests", "", state.execution.test_summary])
+            clean_test_summary = strip_think_tags(state.execution.test_summary).strip()
+            parts.extend(["", "### Tests", "", clean_test_summary])
         parts.extend([
             "",
             f"Source issue/work item: {state.task.work_item.item_id}",
             f"Commit: {state.execution.commit_sha}",
+            brand.format_pr_footer(),
         ])
         return "\n".join(parts)

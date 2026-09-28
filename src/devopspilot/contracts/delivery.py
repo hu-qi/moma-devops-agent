@@ -20,6 +20,7 @@ class DeliveryPhase(StrEnum):
     CI_PASSED = "ci-passed"
     VERIFIED = "verified"
     REJECTED = "rejected"
+    ANSWERED = "answered"
 
 
 @dataclass(frozen=True, slots=True)

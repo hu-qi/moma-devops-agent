@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 import shlex
@@ -168,8 +169,13 @@ class OpenJiuwenTaskExecutor:
         task: DeliveryTask,
         workspace: ExecutionWorkspace,
     ) -> ExecutionResult:
-        from openjiuwen.agent_teams import TeamAgentSpec
-        from openjiuwen.core.runner import Runner
+        try:
+            from openjiuwen.agent_teams import TeamAgentSpec
+            from openjiuwen.core.runner import Runner
+        except (ImportError, ModuleNotFoundError) as mod_err:
+            print(f"DEVOPSPILOT_NOTICE: OpenJiuwen package not installed ({mod_err}).")
+            print("DEVOPSPILOT_NOTICE: Seamlessly routing to MoMA platform Native Agent Executor...")
+            return await self._execute_with_moma_native(task, workspace)
 
         from devopspilot.adapters.moma import MoMAProvider
 
@@ -248,7 +254,14 @@ class OpenJiuwenTaskExecutor:
         spec = TeamAgentSpec.model_validate({
             "agents": {
                 "leader": model_spec(model_routing.leader_model),
-                "teammate": model_spec(model_routing.coding_model),
+                **(
+                    # C08: team mode requires an actual teammate; single_agent runs
+                    # a one-agent team (leader only) so mode is a real behavioral
+                    # difference, not just plan metadata.
+                    {}
+                    if execution_plan.mode is ExecutionMode.SINGLE_AGENT
+                    else {"teammate": model_spec(model_routing.coding_model)}
+                ),
             },
             "model_router": model_routing.model_router,
             "transport": {"type": "inprocess"},
@@ -261,16 +274,23 @@ class OpenJiuwenTaskExecutor:
                 "member_name": "devops_leader",
                 "display_name": "DevOps Leader",
                 "persona": (
-                    "You are DevOpsPilot's software-delivery leader. "
-                    "Work only in the repository workspace given by the task. "
-                    "Use a strict sequential two-specialist protocol. First build the "
-                    "team and spawn only coding_agent with "
-                    f"model_name={model_routing.coding_model!r}. Wait until coding_agent "
-                    "sends concrete patch and test evidence. Only then spawn review_agent "
-                    "with "
-                    f"model_name={model_routing.review_model!r}. The reviewer must "
-                    "independently inspect the actual working tree and re-run verification. "
-                    "Do NOT use create_task, claim_task, update_task, task-board completion "
+                    (
+                        "You are DevOpsPilot's solo software-delivery agent (single_agent mode). "
+                        "Implement the change yourself and then self-verify; an independent "
+                        "review pass still runs afterwards outside this agent. "
+                        if execution_plan.mode is ExecutionMode.SINGLE_AGENT
+                        else
+                        "You are DevOpsPilot's software-delivery leader. "
+                        "Work only in the repository workspace given by the task. "
+                        "Use a strict sequential two-specialist protocol. First build the "
+                        "team and spawn only coding_agent with "
+                        f"model_name={model_routing.coding_model!r}. Wait until coding_agent "
+                        "sends concrete patch and test evidence. Only then spawn review_agent "
+                        "with "
+                        f"model_name={model_routing.review_model!r}. The reviewer must "
+                        "independently inspect the actual working tree and re-run verification. "
+                    )
+                    + "Do NOT use create_task, claim_task, update_task, task-board completion "
                     "state, or manual shutdown_member as completion gates. Those runtime "
                     "states are advisory only. Do not repeatedly poll idle members. "
                     "After review_agent sends an explicit APPROVE or REJECT verdict, "
@@ -686,3 +706,317 @@ Constraints:
 - The leader must leave the verified working-tree changes in place for
   DevOpsPilot to validate and commit.{industry_section}
 """.strip()
+
+    async def _execute_with_moma_native(
+        self,
+        task: DeliveryTask,
+        workspace: ExecutionWorkspace,
+    ) -> ExecutionResult:
+        """Native MoMA-driven autonomous agent executor when openjiuwen core package is omitted.
+
+        C04: this fallback is disabled by default. It must be explicitly enabled
+        with DEVOPSPILOT_ENABLE_NATIVE_FALLBACK=1 after the pipeline meets the
+        Stage-2 gate criteria; silent automatic degradation is forbidden.
+        """
+        if os.environ.get("DEVOPSPILOT_ENABLE_NATIVE_FALLBACK", "").strip() != "1":
+            raise RuntimeError(
+                "Native MoMA fallback executor is disabled (Stage2/C04). "
+                "Set DEVOPSPILOT_ENABLE_NATIVE_FALLBACK=1 to explicitly opt in, "
+                "or install the openjiuwen package for the controlled pipeline."
+            )
+        import json
+        from devopspilot.adapters.moma.client import MoMAClient
+        from devopspilot.contracts.trajectory import (
+            DeliveryTrajectory,
+            TrajectoryEvent,
+            TrajectoryEventKind,
+        )
+        from devopspilot.utils.model_text import (
+            extract_json_payload,
+            sanitize_file_content,
+            strip_think_tags,
+        )
+
+        api_key = _required_env("MOMA_API_KEY")
+        api_base = _required_env("MOMA_API_BASE")
+        coding_model = (
+            os.environ.get("MOMA_CODING_MODEL")
+            or os.environ.get("MOMA_MODEL")
+            or "Qwen3-32B"
+        )
+        review_model = (
+            os.environ.get("MOMA_REVIEW_MODEL")
+            or os.environ.get("MOMA_MODEL")
+            or "deepseek-v4.1-flash"
+        )
+
+        client = MoMAClient(api_key=api_key, api_base=api_base, default_model=coding_model)
+
+        # C04: path boundary — every model-provided file must resolve inside the workspace.
+        def _safe_workspace_file(rel_path: str) -> Path | None:
+            if not rel_path or rel_path.strip() != rel_path:
+                return None
+            candidate = (workspace.path / rel_path).resolve()
+            try:
+                candidate.relative_to(workspace.path.resolve())
+            except ValueError:
+                return None
+            # Forbid overwriting existing tracked files without explicit opt-in
+            forbidden_names = {".git", ".env", ".github", "devopspilot.db"}
+            if any(part in forbidden_names for part in candidate.relative_to(workspace.path.resolve()).parts):
+                return None
+            return candidate
+
+        # 1. Collect workspace context
+        ls_files_out = (await _run("git", "ls-files", cwd=workspace.path))[1]
+        existing_files = [f.strip() for f in ls_files_out.splitlines() if f.strip()]
+
+        readme_path = workspace.path / "README.md"
+        readme_content = ""
+        if readme_path.exists():
+            try:
+                readme_content = readme_path.read_text(encoding="utf-8")[:2000]
+            except Exception:
+                pass
+
+        # 2. Invoke MoMA Coding Model
+        sys_prompt = (
+            "You are an expert DevOps and Software Engineering Agent operating on China Mobile Cloud (MoMA) platform.\n"
+            "Your task is to analyze requirements, inspect the repository files, and provide concrete code modifications.\n"
+            "CRITICAL INSTRUCTIONS:\n"
+            "1. You must return ONLY a single JSON object with this exact structure:\n"
+            "{\n"
+            '  "summary": "Brief human-readable summary of the implementation",\n'
+            '  "files": [\n'
+            '    {\n'
+            '      "path": "relative/file/path",\n'
+            '      "content": "Full source code content of the file"\n'
+            "    }\n"
+            "  ]\n"
+            "}\n"
+            "2. Do NOT include any <think> tags, reasoning traces, or explanations in your output.\n"
+            "3. Do NOT include the JSON structure itself or any markdown fences inside the file 'content'.\n"
+            "4. Start your response directly with { and end with }."
+        )
+
+        user_prompt = (
+            f"Repository: {task.repository.full_name}\n"
+            f"Work item #{task.work_item.item_id}: {task.work_item.title}\n\n"
+            f"Work item description:\n{task.work_item.body}\n\n"
+            f"Existing repository files:\n"
+            + ("\n".join(existing_files) if existing_files else "(empty repository)")
+            + (f"\n\nExisting README snippet:\n{readme_content}" if readme_content else "")
+            + "\n\nPlease generate the required files or updates to resolve this work item completely."
+        )
+
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        print(f"      [MoMA Native Agent] Coding turn: invoking {coding_model} via MoMA...")
+        resp = await asyncio.to_thread(client.chat_completion, messages, model=coding_model)
+        content = resp["choices"][0]["message"]["content"].strip()
+        usage = resp.get("usage", {})
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+
+        # Parse output safely and extract file operations.
+        # C04 fail-closed: unparseable model output must NOT be silently turned
+        # into a fabricated markdown "delivery" file counted as task completion.
+        try:
+            parsed = extract_json_payload(content)
+            if not isinstance(parsed, dict):
+                raise ValueError("model output is not a JSON object")
+        except Exception as parse_err:
+            return ExecutionResult(
+                source_branch=workspace.source_branch,
+                commit_sha="",
+                summary=f"Native execution aborted: model output unparseable ({parse_err}).",
+                published=False,
+                test_summary="No tests executed — coding output failed JSON validation gate.",
+                review=ReviewResult(
+                    reviewer_id="moma-quality-gate",
+                    verdict=ReviewVerdict.REJECTED,
+                    diff_digest="sha256:empty",
+                    summary="Fail-closed: no files written from unparseable model output.",
+                ),
+                metadata={
+                    "execution_mode": "moma_native_fallback",
+                    "gate": "json_parse",
+                    "gate_outcome": "rejected",
+                },
+            )
+
+        files_to_write = parsed.get("files", [])
+        written_any = False
+        for file_spec in files_to_write:
+            rel_path = file_spec.get("path")
+            if not rel_path:
+                continue
+            # C04 path boundary: reject traversal and forbidden targets
+            target_file = _safe_workspace_file(str(rel_path))
+            if target_file is None:
+                print(f"      [MoMA Native Agent] Path boundary: rejected unsafe file path {rel_path!r}")
+                continue
+            fcontent = sanitize_file_content(str(file_spec.get("content", "")), file_path=str(rel_path))
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.write_text(fcontent, encoding="utf-8")
+            written_any = True
+
+        if not written_any:
+            return ExecutionResult(
+                source_branch=workspace.source_branch,
+                commit_sha="",
+                summary=f"Native execution aborted: model produced no writable files for work item #{task.work_item.item_id}.",
+                published=False,
+                test_summary="No tests executed — no file changes passed the path-boundary gate.",
+                review=ReviewResult(
+                    reviewer_id="moma-quality-gate",
+                    verdict=ReviewVerdict.REJECTED,
+                    diff_digest="sha256:empty",
+                    summary="Fail-closed: zero valid file writes; nothing to deliver.",
+                ),
+                metadata={
+                    "execution_mode": "moma_native_fallback",
+                    "gate": "path_boundary",
+                    "gate_outcome": "rejected",
+                },
+            )
+
+        # 3. Stage changes and inspect diff
+        await _run("git", "add", "-A", cwd=workspace.path)
+        diff_out = (await _run("git", "diff", "--staged", cwd=workspace.path))[1]
+        diff_digest = f"sha256:{hashlib.sha256(diff_out.encode('utf-8')).hexdigest()[:16]}"
+
+        # 4. Review Gate with MoMA Review Model — C04 fail-closed:
+        # verdict must come from strict parsing of the reviewer output,
+        # never hardcoded; empty diff is auto-rejected.
+        if not diff_out.strip():
+            print("      [MoMA Native Agent] Quality gate: REJECTED (empty diff — no effective changes)")
+            review_result = ReviewResult(
+                reviewer_id="moma-quality-gate",
+                verdict=ReviewVerdict.REJECTED,
+                diff_digest=diff_digest,
+                summary="Fail-closed: staged diff is empty; no effective change to review.",
+            )
+        else:
+            print(f"      [MoMA Native Agent] Quality gate: invoking independent review ({review_model})...")
+            rev_messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an independent Code Reviewer on the MoMA platform. "
+                        "Review the following git diff against the work item requirement. "
+                        "Output JSON: {\"verdict\": \"approved\" | \"rejected\", \"summary\": \"review remarks\"}"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Work item: {task.work_item.title}\nGit Diff:\n{diff_out[:4000]}",
+                },
+            ]
+            rev_resp = await asyncio.to_thread(client.chat_completion, rev_messages, model=review_model)
+            rev_usage = rev_resp.get("usage", {})
+            prompt_tokens += rev_usage.get("prompt_tokens", 0)
+            completion_tokens += rev_usage.get("completion_tokens", 0)
+
+            # Strict verdict parsing — fail-closed on missing/invalid output
+            rev_verdict = ReviewVerdict.REJECTED
+            rev_summary = "Fail-closed: reviewer output missing or invalid JSON."
+            try:
+                rev_parsed = extract_json_payload(rev_resp["choices"][0]["message"]["content"])
+                if isinstance(rev_parsed, dict) and isinstance(rev_parsed.get("verdict"), str):
+                    verdict_value = rev_parsed["verdict"].strip().lower()
+                    if verdict_value == "approved":
+                        rev_verdict = ReviewVerdict.APPROVED
+                    elif verdict_value == "rejected":
+                        rev_verdict = ReviewVerdict.REJECTED
+                    # any other value stays REJECTED
+                    rev_summary = str(rev_parsed.get("summary", rev_summary)).strip() or rev_summary
+            except Exception:
+                pass
+
+            review_result = ReviewResult(
+                reviewer_id="moma-quality-gate",
+                verdict=rev_verdict,
+                diff_digest=diff_digest,
+                summary=rev_summary,
+            )
+
+        if review_result.verdict is not ReviewVerdict.APPROVED:
+            print(f"      [MoMA Native Agent] Quality gate: REJECTED — {review_result.summary}")
+            return ExecutionResult(
+                source_branch=workspace.source_branch,
+                commit_sha="",
+                summary=f"Native execution blocked by quality gate: {review_result.summary}",
+                published=False,
+                test_summary="No tests executed — changes rejected by independent review gate.",
+                review=review_result,
+                metadata={
+                    "execution_mode": "moma_native_fallback",
+                    "gate": "review",
+                    "gate_outcome": "rejected",
+                    "diff_digest": diff_digest,
+                },
+            )
+
+        # 5. Create local commit
+        commit_msg = f"fix: resolve work item #{task.work_item.item_id} - {task.work_item.title}"
+        await _run(
+            "git",
+            "-c",
+            "user.name=DevOpsPilot",
+            "-c",
+            "user.email=devopspilot@local",
+            "commit",
+            "-m",
+            commit_msg,
+            cwd=workspace.path,
+        )
+        commit_sha = (await _run("git", "rev-parse", "HEAD", cwd=workspace.path))[1].strip()
+
+        traj = DeliveryTrajectory(
+            trajectory_id=workspace.metadata.get("delivery_id", "default"),
+            task_id=task.work_item.item_id,
+            repository=task.repository.full_name,
+            events=(
+                TrajectoryEvent(
+                    sequence=1,
+                    kind=TrajectoryEventKind.ROUTING,
+                    name="model.invoke",
+                    status="success",
+                    attributes={
+                        "model": coding_model,
+                        "input_tokens": prompt_tokens,
+                        "output_tokens": completion_tokens,
+                    },
+                ),
+            ),
+        )
+
+        execution_metadata = {
+            "workspace_path": str(workspace.path),
+            "base_commit": workspace.base_commit,
+            "model_calls": "2",
+            "prompt_tokens": str(prompt_tokens),
+            "completion_tokens": str(completion_tokens),
+            "total_tokens": str(prompt_tokens + completion_tokens),
+            "leader_model": coding_model,
+            "coding_model": coding_model,
+            "review_model": review_model,
+            "execution_mode": "moma_native_fallback",
+        }
+
+        raw_summary = parsed.get("summary", f"Resolved work item {task.work_item.item_id} via MoMA Agent.")
+        cleaned_summary = strip_think_tags(str(raw_summary)).strip() or f"Resolved work item {task.work_item.item_id}"
+
+        return ExecutionResult(
+            source_branch=workspace.source_branch,
+            commit_sha=commit_sha,
+            summary=cleaned_summary,
+            published=False,
+            test_summary="MoMA native quality gate verification passed.",
+            review=review_result,
+            metadata=execution_metadata,
+        )

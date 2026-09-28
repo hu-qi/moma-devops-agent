@@ -1,8 +1,10 @@
+> 历史快照：保留原完成声明供审计，不代表2026-09-28当前验收结果。
+
 # DevOpsPilot V1 收敛实施计划
 
-依据：[2026-09-26 评估](docs/project-assessment-2026-09-26.md)、`PRD/00-decisions.md`、`PRD/02-v1-scope.md`。
+依据：[2026-09-26 评估](../project-assessment-2026-09-26.md)、`PRD/00-decisions.md`、`PRD/02-v1-scope.md`。
 
-目标：完成可稳定复现和恢复的研发交付 V1。保持 Core / Runtime / MaaS / SCM 分层，不重写已有 Provider 与状态契约。详细工作项见 [TODO.md](TODO.md)。
+目标：完成可稳定复现和恢复的研发交付 V1。保持 Core / Runtime / MaaS / SCM 分层，不重写已有 Provider 与状态契约。详细工作项见 [TODO.md](../../TODO.md)。
 
 本次只完成评估、证据纠正与计划编制，以下实施阶段均未完成。预计单名熟悉 Python/CI 的工程师投入 **20–30 人日**；不包含审批等待、外部账号开通和模型服务不稳定时间。估算需在 Stage 1 后按依赖与 Runtime 结果校准，不是交付承诺。
 

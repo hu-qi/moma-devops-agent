@@ -41,9 +41,26 @@ class StandardDeliveryVerifier:
             state.execution is not None
             and bool(state.execution.commit_sha)
         )
-        review_ok = True
+
+        # C05 fail-closed: review evidence must exist and be APPROVED.
+        # Missing review is a rejection, never an implicit pass.
+        review_ok = False
         if state.execution and state.execution.review:
             review_ok = (state.execution.review.verdict is ReviewVerdict.APPROVED)
+            evidence_list.append(f"review:{state.execution.review.verdict.value}")
+            if state.execution.review.diff_digest:
+                evidence_list.append(f"diff_digest:{state.execution.review.diff_digest}")
+
+        # C05 fail-closed: the execution must have actually published its changes.
+        published_ok = bool(state.execution and state.execution.published)
+
+        # C05 fail-closed: CI run must be bound to the delivered commit.
+        ci_sha_bound = bool(
+            state.ci_run
+            and state.execution
+            and state.ci_run.commit_sha
+            and state.ci_run.commit_sha == state.execution.commit_sha
+        )
 
         # Check industry pack gates if task is bound to an industry pack
         industry_gate_ok = True
@@ -52,13 +69,11 @@ class StandardDeliveryVerifier:
             gate_status = state.execution.metadata.get("industry_gates_passed", "").lower()
             industry_gate_ok = (gate_status == "true")
 
-        task_success = ci_success and has_commit and review_ok and industry_gate_ok
+        task_success = ci_success and has_commit and review_ok and industry_gate_ok and published_ok and ci_sha_bound
         if state.ci_run:
             evidence_list.append(f"ci_run:{state.ci_run.run_id}")
         if state.execution:
             evidence_list.append(f"commit:{state.execution.commit_sha}")
-            if state.execution.review:
-                evidence_list.append(f"review:{state.execution.review.verdict}")
             if has_industry_pack:
                 evidence_list.append(f"industry_gates:{'passed' if industry_gate_ok else 'failed'}")
 
@@ -66,10 +81,14 @@ class StandardDeliveryVerifier:
             reasons = []
             if not ci_success:
                 reasons.append("CI not passed")
+            if not ci_sha_bound:
+                reasons.append("CI run not bound to delivered commit SHA")
             if not has_commit:
                 reasons.append("No published commit")
+            if not published_ok:
+                reasons.append("Changes not published (published=False)")
             if not review_ok:
-                reasons.append("Review not approved")
+                reasons.append("Review missing or not approved")
             if not industry_gate_ok:
                 reasons.append("Industry compliance/audit gates failed or missing")
             return VerificationResult(

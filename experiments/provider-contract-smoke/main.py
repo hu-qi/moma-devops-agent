@@ -93,6 +93,9 @@ class FakeSCMProvider:
             CommentSubjectKind.CHANGE_REQUEST,
         }
 
+    async def list_comments(self, subject: CommentSubjectRef, *, limit: int = 50) -> tuple[dict, ...]:
+        return ()
+
     async def submit_review(
         self, repository: RepositoryRef, *, change_id: str,
         state: ReviewState, body: str,

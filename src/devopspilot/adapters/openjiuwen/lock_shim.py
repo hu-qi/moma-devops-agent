@@ -61,8 +61,11 @@ def detect_openjiuwen_version() -> str | None:
 def apply_controlled_lock_shim(*, force: bool = False) -> bool:
     """Apply lock shim ONLY when explicitly configured and version is in whitelist.
 
+    force=True is an explicit opt-in for tests; it bypasses the is_configured()
+    env-var check but NEVER bypasses version verification — unknown/unsupported
+    runtime versions fail closed regardless of force (C06).
     Returns True if shim was applied, False if skipped.
-    Raises UnsupportedRuntimeVersionError if configured but version is unknown/unsupported.
+    Raises UnsupportedRuntimeVersionError if version is unknown/unsupported.
     """
     global _GLOBAL_SHIM_STATE
 
@@ -76,10 +79,16 @@ def apply_controlled_lock_shim(*, force: bool = False) -> bool:
     ver = detect_openjiuwen_version()
     _GLOBAL_SHIM_STATE.detected_version = ver
 
-    if ver is not None and ver not in SUPPORTED_SHIM_VERSIONS:
+    # C06 fail-closed: version whitelist is enforced even under force=True.
+    # Unknown / undetectable versions are rejected — silent patching of an
+    # unverified runtime is no longer permitted.
+    if ver is None or ver not in SUPPORTED_SHIM_VERSIONS:
+        _GLOBAL_SHIM_STATE.applied = False
+        _GLOBAL_SHIM_STATE.reason = "unsupported_version"
         raise UnsupportedRuntimeVersionError(
-            f"DEVOPSPILOT_OPENJIUWEN_LOCK_SHIM is enabled, but openjiuwen version '{ver}' "
-            f"is not in verified whitelist: {sorted(SUPPORTED_SHIM_VERSIONS)}"
+            f"Lock shim requested (force={force}), but openjiuwen version "
+            f"'{ver}' is not in verified whitelist: {sorted(SUPPORTED_SHIM_VERSIONS)}. "
+            "Refusing to patch an unverified runtime (fail-closed)."
         )
 
     # In-memory asyncio read-write lock rather than purely no-op

@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import io
+import os
 import shutil
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+
+# Offline guarantee (C01): strip live credentials BEFORE devopspilot imports,
+# so the CLI start path never attempts real SCM/MoMA calls in this smoke test.
+for _var in ("MOMA_API_KEY", "DEEPSEEK_API_KEY", "ATOMGIT_TOKEN", "GITHUB_TOKEN", "CNB_TOKEN"):
+    os.environ.pop(_var, None)
+# Prevent .env auto-loader from re-injecting credentials from the developer's working copy
+os.environ["DEVOPSPILOT_NO_DOTENV"] = "1"
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
