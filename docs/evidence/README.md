@@ -25,6 +25,8 @@
 | [36087239543](https://github.com/hu-qi/moma-devops-agent/actions/runs/36087239486) | CI Remediation Fixture Reset | `13034d6` | GitHub | FAILURE | 需排查重置脚本并发环境 | 重置工作流在单分支上竞争导致失败。已在 T03 增加互斥与自愈机制。 |
 | [35876800666](https://github.com/hu-qi/moma-devops-agent/actions/runs/35876800666) | MoMA Live Smoke | 历史 Commit | MoMA API | SUCCESS | 无 | 验证基础 OpenAI 兼容接口调用能力。 |
 | [35877219890](https://github.com/hu-qi/moma-devops-agent/actions/runs/35877219890) | MoMA Capability Spikes | 历史 Commit | MoMA API | SUCCESS | 无 | 验证 MoMA 角色模型分发与推理链路。 |
+| [AtomGit-Issue-1](https://gitcode.com/huqi/DevOpsPilot-Test/issues/1) | T25 AtomGit 真实仓库 Issue 交付 | `2160c8b` | AtomGit | SUCCESS | 无人工直接修改代码 | 真实创建并关联任务 Issue #1 与提交。 |
+| [AtomGit-MR-1](https://gitcode.com/huqi/DevOpsPilot-Test/merge_requests/1) | T25 AtomGit 真实 MR 交付与能力边界核验 | `2160c8b` | AtomGit | SUCCESS | **能力边界收缩**：原生 Actions Runs API unsupported，依赖外部 Runner/Webhook | 验证真实分支 `feat/health-check` 推送、OpenAPI 创建 MR #1，并严格收缩国产平台 CI 能力声明。 |
 
 ---
 

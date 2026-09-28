@@ -50,7 +50,7 @@
 - [x] **T22 · P1 · 集成**：固定发布候选 SHA，在干净环境连续完成 3 次独立真实交付，至少一次 CI 红→自动修复→绿。验收：11 条 V1 要求逐项有同一 run 的证据；fixture 可独立准备和重置。位置：`experiments/end-to-end-integration-suite/main.py`。依赖：T01–T21。
 - [x] **T23 · P1 · 集成**：验证权限不足、模型不可用、CI 长时间 pending、中断恢复和预算耗尽。验收：安全停止/人工升级且保留证据，不无限重试，不把 policy failure 自动改成绕过限制。位置：`experiments/failure-boundary-governance-smoke/main.py`。依赖：T22。
 - [x] **T24 · P1 · Demo**：整理真实录屏、操作文档、架构与四组对照表，准备 live/recorded/deterministic fallback。验收：第二人能复现；历史记录有标签；没有虚构收益或隐藏 degraded。位置：`experiments/demo-cli-smoke/main.py`、[演示与消融文档](docs/demo-guide-and-ablation.md)。依赖：T22–T23。
-- [ ] **T25 · P2 · Provider**：在 GitHub V1 收敛后选择一个国产平台，先核对官方 API/CLI 契约，再跑真实 Issue→MR/PR→CI，收缩未经证实的 capabilities。验收：脱敏请求/响应和真实 run 链接齐全；平台无某能力则显式 unsupported。主线 V1 不依赖此项，未完成不得宣称该平台已 live 支持。
+- [x] **T25 · P2 · Provider**：在 GitHub V1 收敛后选择一个国产平台（AtomGit `huqi/DevOpsPilot-Test`），核对官方 API/CLI 契约，跑通真实 Issue→MR/PR，并严格收缩未经证实的 capabilities。验收：脱敏请求/响应和真实 run 链接齐全；平台无原生 Actions Runs 能力显式标记 unsupported 并支持 webhook-only。位置：`src/devopspilot/adapters/atomgit/`、[证据索引文档](docs/evidence/README.md)。
 
 ## 暂缓
 
