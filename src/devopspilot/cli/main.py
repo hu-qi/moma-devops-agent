@@ -23,7 +23,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     # 1. start
     start_p = subparsers.add_parser("start", help="Start a new delivery task")
-    start_p.add_argument("--repo", required=True, help="Repository ID or full name")
+    start_p.add_argument("--provider", choices=["github", "atomgit", "cnb", "mock"], help="Target code hosting provider")
+    start_p.add_argument("--repo", required=True, help="Repository ID, full name, or URL")
     start_p.add_argument("--issue", required=True, help="Work item / issue ID")
     start_p.add_argument("--delivery-id", help="Explicit delivery ID (defaults to uuid)")
     start_p.add_argument("--target", help="Target branch name")
@@ -62,6 +63,44 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+def resolve_provider_and_repo(provider_arg: str | None, repo_arg: str) -> tuple[str, str]:
+    """Resolve provider ID and clean repository path/name from CLI arguments."""
+    repo = repo_arg.strip()
+    if repo.startswith("https://") or repo.startswith("http://"):
+        from urllib.parse import urlparse
+        parsed = urlparse(repo)
+        path = parsed.path.strip("/").removesuffix(".git")
+        if "atomgit.com" in parsed.netloc:
+            return provider_arg or "atomgit", path
+        if "github.com" in parsed.netloc:
+            return provider_arg or "github", path
+        if "cnb.cool" in parsed.netloc:
+            return provider_arg or "cnb", path
+        return provider_arg or "mock", path
+
+    if provider_arg:
+        return provider_arg, repo
+
+    # Infer from local git remote if available
+    try:
+        import subprocess
+        res = subprocess.run(
+            ["git", "config", "--get", "remote.origin.url"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        url = res.stdout.strip()
+        if "atomgit.com" in url:
+            return "atomgit", repo
+        if "cnb.cool" in url:
+            return "cnb", repo
+    except Exception:
+        pass
+
+    return "github", repo
 
 
 def format_state_text(delivery_id: str, version: int, state: Any) -> str:
@@ -195,7 +234,8 @@ async def run_cli(args: argparse.Namespace) -> int:
 
     if args.command == "start":
         deliv_id = args.delivery_id or f"deliv-{uuid.uuid4().hex[:8]}"
-        print(f"Delivery initialized: id={deliv_id} repo={args.repo} issue={args.issue} mode={args.mode}")
+        provider, repo = resolve_provider_and_repo(getattr(args, "provider", None), args.repo)
+        print(f"Delivery initialized: id={deliv_id} provider={provider} repo={repo} issue={args.issue} mode={args.mode}")
         return 0
 
     if args.command == "demo":
