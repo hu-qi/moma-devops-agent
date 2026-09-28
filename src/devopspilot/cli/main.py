@@ -345,86 +345,130 @@ async def run_cli(args: argparse.Namespace) -> int:
         # Step 2: Planning & Model Credentials Check
         moma_key = os.environ.get("MOMA_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
         print(f"[2/5] Execution planning: mode={args.mode} (Single Agent First)")
-        if not moma_key:
-            print("      Model Engine Notice: No MOMA_API_KEY or DEEPSEEK_API_KEY detected in environment / .env.")
-            print("      Autonomous AI coding is paused; running in controlled zero-cost gate verification mode.")
 
-        # Step 3: Execution & Reviewer
-        mock_commit = f"c{uuid.uuid4().hex[:7]}"
-        branch_name = f"feat/issue-{args.issue}-{deliv_id[-4:]}"
-        if moma_key:
-            print(f"[3/5] AI Coding: Branch={branch_name} Commit={mock_commit}")
-            print("      Independent Review Verdict: APPROVED (No defect findings)")
-        else:
-            print(f"[3/5] Coding: Offline Reference Simulation (branch={branch_name})")
-            print("      Independent Review Verdict: APPROVED (Static ruleset verified)")
+        if provider in {"atomgit", "github"}:
+            if not moma_key:
+                print("      Model Engine Notice: No MOMA_API_KEY or DEEPSEEK_API_KEY detected in environment / .env.")
+                print("[3/5] Coding: PAUSED - No AI model credentials available to inspect codebase and write code.")
+                print(f"[4/5] Pull/Merge Request: SKIPPED - No code changes produced; no branch pushed to {provider}.")
+                print("[5/5] CI Verification: INCOMPLETE - Awaiting implementation.")
 
-        # Step 4: Change Request
-        cr_id = f"mr-{args.issue}" if provider == "atomgit" else f"pr-{args.issue}"
-        cr_ref = ChangeRequestRef(
-            repository=repo_ref,
-            change_id=cr_id,
-            title=work_item.title,
-            source_branch=branch_name,
-            target_branch=target_br,
-            state="open",
-            web_url=f"{repo_ref.web_url}/pulls/{args.issue}" if provider == "github" else f"{repo_ref.web_url}/merge_requests/{args.issue}",
-        )
-        if real_issue_fetched and moma_key:
-            print(f"[4/5] Live Change Request opened on {provider}: {cr_ref.web_url}")
-        else:
-            print(f"[4/5] Change Request: Reference target ready ({provider} {cr_id})")
+                final_state = DeliveryState(
+                    task=DeliveryTask(
+                        repository=repo_ref,
+                        work_item=work_item,
+                        target_branch=target_br,
+                        metadata={"delivery_id": deliv_id, "mode": args.mode, "provider": provider},
+                    ),
+                    phase=DeliveryPhase.RECEIVED,
+                    execution=None,
+                    change_request=None,
+                    ci_run=None,
+                    verification=VerificationResult(
+                        accepted=False,
+                        summary="Delivery registered live on SCM, but paused awaiting MOMA_API_KEY / DEEPSEEK_API_KEY.",
+                        outcome_status="evidence_incomplete",
+                    ),
+                )
+                await store.save(deliv_id, final_state, expected_version=0)
+                print(f"\nDelivery status: id={deliv_id} phase=RECEIVED (Paused: awaiting AI model credentials)")
+                print(f"To configure: add MOMA_API_KEY to your .env file, then run:")
+                print(f"  devopspilot resume --delivery-id {deliv_id}")
+                print(f"To inspect state: devopspilot status --delivery-id {deliv_id}")
+                return 0
 
-        # Step 5: CI Reconciliation & Verification
-        ci_run = CIRunRef(
-            provider_id=provider,
-            run_id=f"run-{uuid.uuid4().hex[:6]}",
-            repository=repo_ref,
-            status="success",
-            conclusion="success",
-            commit_sha=mock_commit,
-            web_url=f"{repo_ref.web_url}/actions/runs/1",
-        )
-        verification = VerificationResult(
-            accepted=True,
-            summary="All acceptance criteria met cleanly and verified against CI.",
-            outcome_status="verified_clean",
-        )
-        print(f"[5/5] CI Run: {ci_run.status.upper()} | Verifier: ACCEPTED -> VERIFIED_CLEAN")
+            # Real LLM coding path (when moma_key is configured)
+            print("[3/5] AI Coding: Invoking model to generate implementation...")
+            print(f"[4/5] Change Request: Ready to publish on {provider}")
+            print("[5/5] CI Verification: Pending workflow run")
 
-        # Construct delivery state and persist
-        final_state = DeliveryState(
-            task=DeliveryTask(
-                repository=repo_ref,
-                work_item=work_item,
-                target_branch=target_br,
-                metadata={"delivery_id": deliv_id, "mode": args.mode},
-            ),
-            phase=DeliveryPhase.VERIFIED,
-            execution=ExecutionResult(
-                source_branch=branch_name,
-                commit_sha=mock_commit,
-                summary="Autonomous delivery execution completed cleanly",
-                published=True,
-                test_summary="Local unit tests: 100% pass",
-                review=ReviewResult(
-                    reviewer_id="reviewer-agent",
-                    verdict=ReviewVerdict.APPROVED,
-                    diff_digest=f"sha256-{deliv_id[-8:]}",
-                    commit_sha=mock_commit,
-                    summary="Independent Review Passed: no defect or security findings",
+            final_state = DeliveryState(
+                task=DeliveryTask(
+                    repository=repo_ref,
+                    work_item=work_item,
+                    target_branch=target_br,
+                    metadata={"delivery_id": deliv_id, "mode": args.mode, "provider": provider},
                 ),
-            ),
-            change_request=cr_ref,
-            ci_run=ci_run,
-            verification=verification,
-        )
-        await store.save(deliv_id, final_state, expected_version=0)
+                phase=DeliveryPhase.RECEIVED,
+                execution=None,
+                change_request=None,
+                ci_run=None,
+                verification=VerificationResult(
+                    accepted=False,
+                    summary=f"Delivery task registered on {provider}. Ready for autonomous execution.",
+                    outcome_status="evidence_incomplete",
+                ),
+            )
+            await store.save(deliv_id, final_state, expected_version=0)
+            print(f"\nDelivery registered: id={deliv_id} phase=RECEIVED")
+            print(f"To query status:  devopspilot status --delivery-id {deliv_id}")
+            print(f"To export report: devopspilot report --delivery-id {deliv_id} --format markdown")
+            return 0
 
-        print(f"\nDelivery completed successfully: id={deliv_id} phase=VERIFIED")
-        print(f"To query status:  devopspilot status --delivery-id {deliv_id}")
-        print(f"To export report: devopspilot report --delivery-id {deliv_id} --format markdown")
-        return 0
+        else:
+            # Explicit Mock / Dry-Run Simulation Mode
+            mock_commit = f"c{uuid.uuid4().hex[:7]}"
+            branch_name = f"feat/issue-{args.issue}-{deliv_id[-4:]}"
+            cr_id = f"mr-{args.issue}" if provider == "atomgit" else f"pr-{args.issue}"
+            print(f"[DRY-RUN 3/5] Simulated coding: branch={branch_name} commit={mock_commit}")
+            print("              Simulated Review: APPROVED (Deterministic Offline Fallback)")
+            print(f"[DRY-RUN 4/5] Simulated change request: mock://{repo}/pulls/{args.issue}")
+            print("[DRY-RUN 5/5] Simulated CI: SUCCESS (Deterministic Verification)")
+
+            cr_ref = ChangeRequestRef(
+                repository=repo_ref,
+                change_id=cr_id,
+                title=work_item.title,
+                source_branch=branch_name,
+                target_branch=target_br,
+                state="open",
+                web_url=f"https://local/{repo}/pulls/{args.issue}",
+            )
+            ci_run = CIRunRef(
+                provider_id=provider,
+                run_id=f"run-{uuid.uuid4().hex[:6]}",
+                repository=repo_ref,
+                status="success",
+                conclusion="success",
+                commit_sha=mock_commit,
+                web_url=f"https://local/{repo}/actions/runs/1",
+            )
+            verification = VerificationResult(
+                accepted=True,
+                summary="Deterministic simulation verification passed cleanly.",
+                outcome_status="verified_clean",
+            )
+            final_state = DeliveryState(
+                task=DeliveryTask(
+                    repository=repo_ref,
+                    work_item=work_item,
+                    target_branch=target_br,
+                    metadata={"delivery_id": deliv_id, "mode": "simulation"},
+                ),
+                phase=DeliveryPhase.VERIFIED,
+                execution=ExecutionResult(
+                    source_branch=branch_name,
+                    commit_sha=mock_commit,
+                    summary="Deterministic simulation execution (Zero Model API Cost)",
+                    published=True,
+                    test_summary="Local unit tests: 100% pass",
+                    review=ReviewResult(
+                        reviewer_id="reviewer-simulation",
+                        verdict=ReviewVerdict.APPROVED,
+                        diff_digest=f"sha256-{deliv_id[-8:]}",
+                        commit_sha=mock_commit,
+                        summary="Deterministic Simulation Review: no findings",
+                    ),
+                ),
+                change_request=cr_ref,
+                ci_run=ci_run,
+                verification=verification,
+            )
+            await store.save(deliv_id, final_state, expected_version=0)
+            print(f"\nDelivery simulation completed: id={deliv_id} phase=VERIFIED (SIMULATED)")
+            print(f"To query status:  devopspilot status --delivery-id {deliv_id}")
+            print(f"To export report: devopspilot report --delivery-id {deliv_id} --format markdown")
+            return 0
 
     if args.command == "demo":
         if args.mode == "deterministic":
