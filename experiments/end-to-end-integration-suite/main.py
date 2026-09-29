@@ -60,6 +60,7 @@ from devopspilot.contracts.remediation import (
 from devopspilot.contracts.review import ReviewFinding, ReviewResult, ReviewVerdict
 from devopspilot.contracts.state import StoredDeliveryState
 from devopspilot.industry.gate_runner import IndustryGateRunner
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 from devopspilot.orchestration.control_plane import (
     AutonomousDeliveryControlPlane,
     BoundedRemediationPolicy,
@@ -138,8 +139,8 @@ class LocalRepoFixture:
     def setup(self) -> tuple[RepositoryRef, Path]:
         git("init", "--bare", str(self.remote_dir))
         git("init", str(self.work_dir))
-        git("config", "user.name", "DevOpsPilot", cwd=self.work_dir)
-        git("config", "user.email", "devopspilot@local", cwd=self.work_dir)
+        for _key, _value in ISOLATED_LOCAL_CONFIG:
+            git("config", _key, _value, cwd=self.work_dir)
         git("remote", "add", "origin", str(self.remote_dir), cwd=self.work_dir)
 
         readme = self.work_dir / "README.md"

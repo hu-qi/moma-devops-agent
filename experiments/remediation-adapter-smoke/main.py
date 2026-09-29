@@ -20,6 +20,7 @@ from devopspilot.contracts.delivery import (
 )
 from devopspilot.contracts.providers import CIRunRef, RepositoryRef, WorkItemRef
 from devopspilot.contracts.remediation import CIFailureAnalysis, CIFailureKind
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 
 def git(cwd: Path, *args: str) -> str:
@@ -48,8 +49,8 @@ async def workspace_contract() -> None:
         repo = tmp / "repo"
         subprocess.run(["git", "init", "--bare", str(remote)], check=True)
         subprocess.run(["git", "init", str(repo)], check=True)
-        git(repo, "config", "user.name", "DevOpsPilot")
-        git(repo, "config", "user.email", "devopspilot@local")
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            git(repo, "config", key, value)
         (repo / "app.py").write_text("value = 'base'\n", encoding="utf-8")
         git(repo, "add", "app.py")
         git(repo, "commit", "-m", "base")

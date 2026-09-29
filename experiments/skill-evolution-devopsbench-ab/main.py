@@ -27,6 +27,7 @@ from devopspilot.contracts.evolution import (
 )
 from devopspilot.contracts.execution import ExecutionWorkspace
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 from devopspilot.evolution import EvolutionEngine
 
 
@@ -111,8 +112,8 @@ class BenchmarkWorkspaceProvider:
         shutil.copytree(FIXTURE, workspace, dirs_exist_ok=True)
 
         run("git", "init", cwd=workspace)
-        run("git", "config", "user.name", "DevOpsBench", cwd=workspace)
-        run("git", "config", "user.email", "devopsbench@local", cwd=workspace)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            run("git", "config", key, value, cwd=workspace)
         run("git", "add", "-A", cwd=workspace)
         run("git", "commit", "-m", "fixture: failing CI workflow", cwd=workspace)
         source_branch = f"devopspilot/{self.variant}-working-directory"

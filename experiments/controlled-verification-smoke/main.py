@@ -19,6 +19,7 @@ from devopspilot.orchestration.test_runner import (
     run_controlled_command,
     verify_oracle_not_tampered,
 )
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 
 def test_empty_verification_command_error() -> None:
@@ -58,8 +59,8 @@ def test_oracle_tamper_detection() -> None:
     tmp_repo = Path(tempfile.mkdtemp(prefix="devopspilot_oracle_repo_"))
     try:
         subprocess.run(["git", "init", "-b", "main"], cwd=tmp_repo, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "DevOpsPilot"], cwd=tmp_repo, check=True)
-        subprocess.run(["git", "config", "user.email", "devopspilot@local"], cwd=tmp_repo, check=True)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            subprocess.run(["git", "config", key, value], cwd=tmp_repo, check=True, capture_output=True)
 
         app_file = tmp_repo / "app.py"
         app_file.write_text("def run(): pass\n", encoding="utf-8")

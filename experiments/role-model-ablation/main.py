@@ -20,6 +20,7 @@ from devopspilot.adapters.openjiuwen import OpenJiuwenTaskExecutor
 from devopspilot.contracts.delivery import DeliveryTask
 from devopspilot.contracts.execution import ExecutionWorkspace
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,8 +49,8 @@ class AblationWorkspaceProvider:
         )
         shutil.copytree(FIXTURE, workspace, dirs_exist_ok=True)
         run("git", "init", cwd=workspace)
-        run("git", "config", "user.name", "DevOpsBench", cwd=workspace)
-        run("git", "config", "user.email", "devopsbench@local", cwd=workspace)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            run("git", "config", key, value, cwd=workspace)
         run("git", "add", "-A", cwd=workspace)
         run("git", "commit", "-m", "fixture: initial failing state", cwd=workspace)
         branch = f"devopspilot/ablation-{self.run_name}"

@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
@@ -61,8 +63,8 @@ def test_bootstrap_missing_branch_contract() -> None:
     tmp_repo = Path(tempfile.mkdtemp(prefix="devopspilot_git_repo_"))
     try:
         subprocess.run(["git", "init", "-b", "main"], cwd=tmp_repo, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "DevOpsPilot"], cwd=tmp_repo, check=True)
-        subprocess.run(["git", "config", "user.email", "devopspilot@local"], cwd=tmp_repo, check=True)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            subprocess.run(["git", "config", key, value], cwd=tmp_repo, check=True, capture_output=True)
 
         # Create initial commit on main
         dummy_file = tmp_repo / "README.md"

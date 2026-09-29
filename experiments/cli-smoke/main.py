@@ -30,6 +30,7 @@ from devopspilot.contracts.delivery import (
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
 from devopspilot.contracts.review import ReviewResult, ReviewVerdict
 from devopspilot.persistence.sqlite_state import SQLiteDeliveryStateStore
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 REPO = RepositoryRef(provider_id="mock", repository_id="repo-cli", full_name="org/cli-repo", default_branch="main")
 
@@ -278,13 +279,12 @@ def test_shared_gates_reject_counterexamples() -> None:
     try:
         import subprocess
         subprocess.run(["git", "init", "-q"], cwd=tmp, check=True)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            subprocess.run(["git", "config", key, value], cwd=tmp, check=True)
         oracle = tmp / "tests_oracle.py"
         oracle.write_text("assert True\n", encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=tmp, check=True)
-        subprocess.run(
-            ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"],
-            cwd=tmp, check=True,
-        )
+        subprocess.run(["git", "commit", "-qm", "init"], cwd=tmp, check=True)
         verify_oracle_not_tampered(tmp, ("tests_oracle.py",))
         oracle.write_text("assert False  # tampered\n", encoding="utf-8")
         try:

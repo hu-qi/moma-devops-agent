@@ -10,6 +10,7 @@ from pathlib import Path
 from devopspilot.adapters.git import GitChangePublisher, GitWorktreeWorkspaceProvider
 from devopspilot.contracts.delivery import DeliveryTask, ExecutionResult
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 
 def git(*args: str, cwd: Path | None = None) -> str:
@@ -29,8 +30,8 @@ async def main() -> None:
 
     git("init", "--bare", str(remote))
     git("init", str(work))
-    git("config", "user.name", "DevOpsPilot", cwd=work)
-    git("config", "user.email", "devopspilot@local", cwd=work)
+    for _key, _value in ISOLATED_LOCAL_CONFIG:
+        git("config", _key, _value, cwd=work)
 
     (work / "demo.txt").write_text("validated\n", encoding="utf-8")
     git("add", "demo.txt", cwd=work)
@@ -72,8 +73,8 @@ async def main() -> None:
     # workspace primitive.
     base_repo = root / "base"
     git("init", str(base_repo))
-    git("config", "user.name", "DevOpsPilot", cwd=base_repo)
-    git("config", "user.email", "devopspilot@local", cwd=base_repo)
+    for _key, _value in ISOLATED_LOCAL_CONFIG:
+        git("config", _key, _value, cwd=base_repo)
     (base_repo / "base.txt").write_text("base\n", encoding="utf-8")
     git("add", "base.txt", cwd=base_repo)
     git("commit", "-m", "base", cwd=base_repo)

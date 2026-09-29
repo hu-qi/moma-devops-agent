@@ -29,6 +29,7 @@ from devopspilot.contracts.evolution import (
 )
 from devopspilot.contracts.execution import ExecutionWorkspace
 from devopspilot.contracts.providers import RepositoryRef, WorkItemRef
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 from devopspilot.evolution import EvolutionEngine, RegressionGate
 from devopspilot.persistence.evolution_audit import SQLiteEvolutionAuditStore
 
@@ -123,8 +124,8 @@ class BenchmarkWorkspaceProvider:
         )
         shutil.copytree(FIXTURE, workspace, dirs_exist_ok=True)
         git("init", cwd=workspace)
-        git("config", "user.name", "DevOpsBench", cwd=workspace)
-        git("config", "user.email", "devopsbench@local", cwd=workspace)
+        for key, value in ISOLATED_LOCAL_CONFIG:
+            git("config", key, value, cwd=workspace)
         git("add", "-A", cwd=workspace)
         git("commit", "-m", "fixture: initial failing state", cwd=workspace)
         branch = f"devopspilot/team-pattern-{self.variant}"

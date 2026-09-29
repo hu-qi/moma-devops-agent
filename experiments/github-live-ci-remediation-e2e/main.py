@@ -94,9 +94,11 @@ async def publish_failing_candidate(
         )
         await git(
             "-c",
-            "user.name=DevOpsPilot",
+            "user.name=DevOpsPilot Test",
             "-c",
-            "user.email=devopspilot@local",
+            "user.email=devopspilot-test@example.invalid",
+            "-c",
+            "commit.gpgSign=false",
             "commit",
             "-m",
             "test: publish failing remediation candidate",

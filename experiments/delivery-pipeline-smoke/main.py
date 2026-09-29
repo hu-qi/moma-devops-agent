@@ -46,6 +46,7 @@ from devopspilot.contracts.providers import (
     WorkItemRef,
 )
 from devopspilot.orchestration import DeliveryLoop, PublishingTaskExecutor
+from devopspilot.testing.git_isolation import ISOLATED_LOCAL_CONFIG
 
 
 def git(*args: str, cwd: Path | None = None) -> str:
@@ -72,12 +73,7 @@ class LocalCommittedExecutor:
             encoding="utf-8",
         )
         git("add", "app.py", cwd=self.workspace)
-        git(
-            "-c", "user.name=DevOpsPilot",
-            "-c", "user.email=devopspilot@local",
-            "commit", "-m", "fix: delivery pipeline smoke",
-            cwd=self.workspace,
-        )
+        git("commit", "-m", "fix: delivery pipeline smoke", cwd=self.workspace)
         sha = git("rev-parse", "HEAD", cwd=self.workspace)
 
         return ExecutionResult(
@@ -273,8 +269,8 @@ async def main() -> None:
 
     git("init", "--bare", str(remote))
     git("init", str(workspace))
-    git("config", "user.name", "DevOpsPilot", cwd=workspace)
-    git("config", "user.email", "devopspilot@local", cwd=workspace)
+    for _key, _value in ISOLATED_LOCAL_CONFIG:
+        git("config", _key, _value, cwd=workspace)
     (workspace / "app.py").write_text(
         "def status():\n    return 'broken'\n",
         encoding="utf-8",
