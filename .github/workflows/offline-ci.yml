@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   offline-checks:
-    name: Offline Suite (15 Smokes + 3 Scripts + Fixture Preconditions)
+    name: Offline Suite (35 Smokes + 3 Scripts + Unit Tests + Fixture Preconditions)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,6 +45,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[test]"
 
-      - name: Run unified offline checks
+      - name: Run unified offline checks (fail-fast)
         run: |
           python scripts/run_offline_checks.py --fail-fast
+
+      - name: Diagnose failures without fail-fast
+        if: failure()
+        run: |
+          python scripts/run_offline_checks.py
