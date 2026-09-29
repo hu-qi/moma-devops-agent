@@ -15,9 +15,11 @@ pip install -e .
 ```
 
 若需安装可选依赖：
-- 包含测试工具：`pip install -e ".[test]"`
+- 包含测试工具（pytest + pytest-asyncio）：`pip install -e ".[test]"`
 - 包含完整开发依赖：`pip install -e ".[all]"`
 - 使用固定版本锁定文件安装：`pip install -r requirements-lock.txt`
+
+测试套件中的异步用例（`tests/test_intent_classification.py`）使用 `pytest.mark.asyncio` 标记，依赖 `pytest-asyncio`。pytest 配置为 `asyncio_mode = "strict"`，`pytest-asyncio` 属于 `[test]`/`[all]` extras，干净环境仅需 `pip install -e ".[test]"` 即可运行全部测试；未安装时异步用例会因未知 marker 失败，属预期行为。
 
 ## 2. 依赖分组与分层设计
 
@@ -26,7 +28,7 @@ DevOpsPilot 严格遵守 Core / Runtime / MaaS / SCM 的分层设计，并将离
 | 分组 | 依赖包 | 用途与约束 |
 |---|---|---|
 | **Core / 离线主链** (默认) | `pyyaml>=6.0.1` | 用于 Industry Engineering Pack (`pack.yaml`) 解析、配置读取与离线验证主链。标准库覆盖 dataclasses、sqlite3 等。 |
-| **Test** (`[test]`) | `pytest>=8.0.0` | 单元测试框架与断言工具。 |
+| **Test** (`[test]`) | `pytest>=8.0.0`、`pytest-asyncio>=0.24.0` | 单元测试框架、断言工具与异步用例支持（strict marker 模式）。 |
 | **Industry** (`[industry]`) | `pyyaml>=6.0.1` | 行业规则规范包解析与加载。 |
 | **Runtime** (`[runtime]`) | `openjiuwen[observability,sqlite]` | 在线 AgentTeam 执行引擎与 RSI 进化能力。仅在真实调用模型或本地运行 OpenJiuwen 运行时时需要。 |
 

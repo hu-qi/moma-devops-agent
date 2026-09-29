@@ -27,6 +27,7 @@ industry = [
 ]
 test = [
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
 ]
 runtime = [
     # Pin to exact resolved commit from openJiuwen release/v0.1.19
@@ -35,6 +36,7 @@ runtime = [
 all = [
     "pyyaml>=6.0.1",
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
 ]
 
 [project.scripts]
@@ -46,3 +48,4 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["experiments", "benchmarks", "tests"]
 python_files = ["test_*.py"]
+asyncio_mode = "strict"
