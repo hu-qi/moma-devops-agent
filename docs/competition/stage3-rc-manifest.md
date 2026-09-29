@@ -21,7 +21,7 @@
 - **Tag**：`rc-2026-mobile-cloud-cup-01`（后续代码变更必须生成 `-02`，不得移动旧 tag）
 - **RC commit SHA**：`ddc414a60bba2b5399e08425ead373dc4ce81b49`（tag `rc-2026-mobile-cloud-cup-01` 指向该 SHA；本行为冻结后的文档回填，不改动 tag）
 - **Phase A 状态**：R01–R05 已完成（pytest-asyncio 依赖闭环、CI workflow 修正、Git 全局配置隔离、pytest 收集语义统一、Live 脚本退出码与业务结果绑定）
-- **Required workflows**：`Offline Regression and Gates` 对该 SHA 的 run URL 待推送后回填
+- **Required workflows**：`Offline Regression and Gates` 对 RC SHA `ddc414a` 的 run：https://github.com/hu-qi/moma-devops-agent/actions/runs/36610159951（success，2026-09-30）；main 分支 `f5c6fb1` 同样 success（run 36609966640）
 - **验证命令与结果**：`python scripts/run_offline_checks.py` → `41 passed, 0 failed`（本地 Python 3.11.14）；空 venv `pip install -e ".[test]"` 后 pytest 21 passed（R01 证据 `/tmp/r01_pip_freeze.txt`、`/tmp/r01_offline.log`）
 
 ## 2. 每次 Live Run 必须记录的字段
