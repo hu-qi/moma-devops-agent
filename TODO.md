@@ -1,10 +1,104 @@
-> **2026-09-28 验收更新（口径修订）**：V1 纠偏与质量门禁加固已落地。当前全量离线回归为 **40/40 全部通过（0 失败、0 环境阻塞）**；单元测试与反例测试全量通过；凭据脱敏、意图分类与模型文本清洗防护已严格闭环。T01–T18、T21、T23、T25 对应指标与功能已真实核验；**T19、T20、T22、T24 的完成声明缺乏可复算证据，已撤销勾选、保留历史记录**，待按 [比赛执行 TODO](docs/competition/TODO.md) Stage 3/4 重新验收。详情参见 [项目评估](docs/project-assessment-2026-09-28.md) 与 [证据索引](docs/evidence/README.md)。
+> **2026-09-29 独立验收结论（当前口径）**：当前作品验收结果为 **不通过**。核心离线实现可在受控环境完成 41/41，但当前 HEAD `6474715` 的 GitHub `Offline Regression and Gates` 失败；默认本机环境会受全局 Git 提交签名影响而失败；Stage 3 真实 Live 尚未接线；DevOpsBench 仅有 9 个合成案例且没有正式 A0–A3 原始结果；正式 PPT、视频和提交包不存在。不得再使用“全部完成”“当前 RC 全绿”“完全满足答辩要求”等表述，直至本文件的 P0/P1 放行项全部完成。
+>
+> **历史口径**：2026-09-28 的纠偏和质量门禁加固仍保留价值，但其“40/40/全量通过”结论已被当前提交的干净 CI 失败取代。T19、T20、T22、T24 继续保持未完成；此前在比赛 TODO 中把“规划/脚手架/大纲”勾为完成的条目必须按本次整改标准重新验收。
 
 # DevOpsPilot V1 TODO
 
 基线日期：2026-09-26。未勾选表示未完成，文档/代码存在不等于验收通过。每项的证据应包含 commit、命令/运行链接、预期和实际结果。
 
 完成顺序：**基线 → 质量门禁 → 恢复主链 → 行业/评测 → 稳定验收**。P0 是继续扩展前必须修复的正确性问题，P1 是 V1 必需，P2 是延后扩展。
+
+## 2026-09-29 独立验收整改总表
+
+> R01–R29 的逐项修改位置、实现步骤、验证命令、预期结果、证据要求和故障处理见 [独立验收整改执行指南](docs/competition/remediation-execution-guide.md)。本表用于跟踪状态，执行指南用于实际落地；两者的任务编号必须保持一致。
+
+### 执行纪律与证据规则
+
+- [ ] 所有任务只有在“实现、自动化测试、当前 SHA 运行证据、文档口径”四者一致时才能勾选；只有规划、schema、脚手架、大纲或 dry-run 不算完成。
+- [ ] 离线模拟、Mock 契约、历史 Live、当前 RC Live 必须分栏记录，禁止相互替代。
+- [ ] 每个完成项必须记录：commit SHA、执行命令、退出码、预期/实际结果、CI/远端链接、原始产物路径、降级和人工介入情况。
+- [ ] 任一 required workflow 失败、RC 未冻结、Live 未签收、原始评测不可复算或正式交付件缺失时，最终结论必须保持“不通过”。
+- [ ] 远端写入、批量 MoMA 调用、比赛报名和材料上传仍需人类明确确认目标、分支、预算与账号；此限制不允许用 dry-run 代替验收。
+
+### Phase A：恢复可信工程基线（P0，必须首先完成）
+
+- [ ] **R01 · P0 · 干净安装依赖闭环**：为异步 pytest 用例补充明确测试依赖（优先 `pytest-asyncio`，如采用其他插件必须与现有标记一致），同步更新锁定文件和安装文档。位置：`pyproject.toml`、`requirements-lock.txt`、`docs/setup/environment-and-dependencies.md`。验收：全新 Python 3.11 venv 中仅执行 `pip install -e ".[test]"` 后，`python scripts/run_offline_checks.py` 返回 0；不得依赖开发机已安装插件。证据：保存 `python --version`、`pip freeze`、41 项摘要和 GitHub Actions run URL。
+- [ ] **R02 · P0 · 修复当前 HEAD 主 CI**：修复 `Offline Regression and Gates` 当前失败，确保 required workflow 对 `src/`、`tests/`、`experiments/`、`benchmarks/`、依赖和脚本修改均触发。位置：`.github/workflows/offline-ci.yml`、`scripts/run_offline_checks.py`。验收：当前候选 SHA 的该工作流为 success，41/41 全部执行且无 skip、xfail 或环境阻塞；失败项必须使 job 非零退出。
+- [ ] **R03 · P0 · 隔离 Git 全局配置**：所有创建临时仓库的 smoke/E2E 必须显式设置本地 `user.name`、`user.email` 和 `commit.gpgSign=false`，不得继承评审机的签名、hooks 或默认分支配置。位置：`experiments/*/main.py` 中的 fixture helper，优先提取一个简单公共 helper，避免逐脚本漂移。测试：在 `commit.gpgsign=true` 且签名工具不可用的环境运行 41 项套件仍全绿；再验证普通项目提交行为不被修改。
+- [ ] **R04 · P0 · 统一 pytest 收集语义**：明确区分产品测试与故意失败的 benchmark 初始 fixture。修正根目录 `pytest` 会收集红灯 fixture 的问题，或在文档中只暴露唯一不会误用的统一入口。位置：`pyproject.toml`、`scripts/run_offline_checks.py`、benchmark fixture 目录。验收：`python -m pytest -q` 与统一离线命令均返回 0；fixture 缺陷仍由 `validate-fixtures` 证明“修复前必失败”，而不是混入常规测试。
+- [ ] **R05 · P0 · 消除 CI 假绿**：所有 Live/评测脚本必须以任务结果而非“脚本跑完”决定退出码。baseline/candidate 均失败、runtime degraded、缺少最终结果标记、oracle 失败或 gate 未达到该 workflow 的预期时，job 必须失败或明确标为 expected-rejection 专项测试。位置：`experiments/openjiuwen-task-executor/main.py`、`experiments/skill-evolution-devopsbench-ab/main.py` 及对应 workflows。验收：故障注入能稳定使 workflow 红；成功路径必须输出结构化最终摘要，至少包含 `task_success`、`runtime_clean_completion`、`oracle`、`gate` 和 artifact digest。
+- [ ] **R06 · P0 · 发布候选冻结门禁**：基于全部 P0 修复后的提交创建唯一 RC tag，回填 Python、OpenJiuwen commit、模型、行业 Pack digest、case digest 和 required workflows。位置：`docs/competition/stage3-rc-manifest.md`。验收：工作区干净，tag 指向的 SHA 与所有证据一致；任何后续代码变更都必须生成新 RC，不能继续复用旧签收。
+
+### Phase B：完成当前 RC 的真实交付签收（P0/P1）
+
+- [ ] **R07 · P0 · 接通 Stage 3 `--live`**：实现 `experiments/stage3-live-suite/main.py --live`，不得再返回 `Live mode not yet wired`。必须复用公开 CLI/控制面，不允许为比赛另写绕过产品门禁的专用成功脚本。输入：provider、目标 fixture repo、issue、RC tag、隔离分支前缀、预算和 evidence 输出目录。安全：没有 `DEVOPSPILOT_STAGE3_CONFIRM=YES`、目标不在允许列表、工作区不干净或预算缺失时 fail-closed。
+- [ ] **R08 · P1 · S1 正常真实交付**：从当前 RC 完成真实 Issue → 意图 → Plan → 模型路由 → 代码修改 → 独立 Review → 测试 → push → PR → CI → report → trajectory。验收：最终 PR/CI SHA 与报告、Review digest、trajectory 关联一致；无人工直接改代码；记录模型、tokens、耗时、人工介入和 runtime degradation。
+- [ ] **R09 · P1 · S2 CI 红转绿真实修复**：准备可重置的隔离 fixture，使第一次 CI 必定失败；控制面读取真实日志、预留预算、完成 RCA、在同一分支推送修复并使 required checks 变绿。验收：至少一个真实红 run 和一个修复后绿 run；attempt 不重置、没有重复 PR、没有人工替 Agent 改代码。
+- [ ] **R10 · P1 · S3 行业 Gate 真实拦截与修复**：在同一 RC 上触发一个有明确来源和适用边界的政务审计违规，证明 required gate 阻断发布，再由正式执行链修复并重新通过。验收：保存违规输入、gate finding、修复 diff、复审、测试、CI 与最终验证；文案明确这是工程质量规则示例，不宣称法规认证。
+- [ ] **R11 · P1 · S4 中断恢复真实签收**：在 push 后、PR 后或 CI pending 阶段注入真实中断，使用 `resume` 恢复。验收：远端仍只有一个目标分支和一个 PR；预算、attempt、SHA、Review 与 CI 状态不丢失；reconcile 结果进入审计记录。
+- [ ] **R12 · P1 · PRD 11 项逐条签收**：将 R08–R11 的同一 RC 原始 JSON 回填 `docs/competition/stage3-prd-signoff.md`，每条必须链接到具体字段或远端证据。验收：11 项不得只引用代码位置或历史 run；至少三轮 Live 和一次恢复全部通过后才能把 T22 勾选。
+
+### Phase C：补齐可复算评测与进化证据（P1）
+
+- [ ] **R13 · P1 · DevOpsBench 扩充至 24 例**：coding、code-review、ci-debug 各 8 例，其中每类至少 2 例固定 holdout。每例包含版本化 `case.json`、合成/公开来源与许可证、初始缺陷、oracle、allowed/forbidden paths、预算、风险和修复前/后确定性验证。位置：`benchmarks/cases/`、schemas、`runner.py validate-fixtures`。验收：24/24 fixture precondition 通过，holdout 默认不参与调优，显式开关才可评估。
+- [ ] **R14 · P1 · 冻结 A0–A3 实验契约**：将四组策略统一为同一 RC、case 版本、模型可用性快照、超时、最大调用/重试、上下文和人工介入规则；禁止文档与 runner 对 A0–A3 含义不一致。位置：`docs/demo-guide-and-ablation.md`、`benchmarks/devopsbench/runner.py`、routing comparator。验收：plan 模式输出案例数、变体数、重复数、最大调用量和预算上限，经人工确认后才允许 `--execute`。
+- [ ] **R15 · P1 · 运行完整对照实验**：对 24 例 × 4 变体 × 每例至少 3 次执行，保存每次原始 JSONL，不覆盖失败样本。字段至少包含 RC/case/model/variant/repetition、task success、oracle、tokens、耗时、tool/model calls、人工介入、失败分类、runtime health 和价格版本。验收：预期最少 288 条结果；中断可续跑且不会重复计数；所有失败进入分母。
+- [ ] **R16 · P1 · 生成可复算评测报告**：从只读原始 JSONL 生成总体、类别、visible/holdout 和重复波动报告；输出成功率、置信区间或分布、P50/P95 耗时、tokens、估算成本、人工介入及失败原因。验收：第二人在全新 clone 中一条命令生成 byte-stable 或数值等价报告；价格未知保持 `unestimated`；禁止把体验额度当作零成本。
+- [ ] **R17 · P1 · 受控进化正反两类证据**：保留“负收益/双方失败 → rejected”的真实样例，并新增至少一个 baseline/candidate 均有效且 candidate 有可复算正收益的样例；若没有正收益，如实保持 rejected，不得为了展示强行 PENDING_HUMAN。验收：同一 task/trajectory/candidate id 贯穿，生产 Skill 未被自动修改，正收益最多停在 `PENDING_HUMAN`，真实人工审批和回滚另有审计记录。
+- [ ] **R18 · P1 · 原始数据与结果归档**：建立 `docs/evidence/rc-<tag>/benchmarks/` 或等价受版本控制目录，保存 manifest、raw JSONL、汇总、失败样本索引、价格快照与 SHA256SUMS；大文件可使用发布附件，但仓库必须保留不可失效的索引和 digest。完成后才能勾选 T19、T20、T21 的“真实评测”部分。
+
+### Phase D：修复演示、文档与证据可信度（P1）
+
+- [ ] **R19 · P1 · Recorded 模式可携带复现**：`demo --mode recorded` 只能展示已跟踪或随 release 发布的当前 RC 原始产物，不能依赖被 `*.log` 忽略的本机文件，也不能只展示 README/索引。验收：全新 clone 离线运行可看到三轮 Live 的结构化摘要、真实链接、SHA、降级、失败和 artifact digest；缺任何必要证据时返回非零。
+- [ ] **R20 · P1 · 文档路径与命令审计**：修正专家指南中不存在的 `src/devopspilot/scm/`、`orchestration/planner.py`、`tests/test_cli_smoke.py` 等路径；统一 40/41、Python 版本、安装命令、CLI 参数、模型名和 RC SHA。验收：自动检查 Markdown 相对链接、反引号内仓库路径和 shell 命令；所有示例在干净环境执行通过。
+- [ ] **R21 · P1 · 撤销夸大与矛盾状态**：同步更新 `README.md`、`IMPLEMENTATION_PLAN.md`、`docs/competition/TODO.md`、合规矩阵、专家指南、分镜和 PPT 大纲。删除或降级“全部完成”“100% 覆盖”“完全满足”“当前 RC 全绿”“视频/PPT 已就绪”等无证据表述；规划必须标 `Planned`，dry-run 标 `Simulated`，历史 Live 标 `Historical`，当前 RC 标 `Current RC`。
+- [ ] **R22 · P1 · 安全与许可证审计可执行化**：将凭据、Git 历史敏感文件、个人信息 fixture、依赖许可证检查变成有命令、版本和输出的审计流程，不允许仅在 Markdown 中手工写 PASS。验收：扫描器或脚本对当前 SHA 运行，结果和 allowlist 入库；真实密钥模式命中必须阻断；占位符有明确例外；第三方依赖许可证来自锁定版本的实际元数据。
+- [ ] **R23 · P1 · 官方规则重新核验**：只使用移动云官方页面、报名系统、官方通知或组委会书面确认，核实赛道、资格、截止时间、评分权重、指定平台要求、原创/开源限制、PPT/视频/压缩包格式和大小。位置：`docs/competition/stage5-competition-compliance-matrix.md`。验收：每条规则有可访问 URL、页面标题、读取日期和原文摘要；未公布项写“待官方确认”，不得标 PASS。
+
+### Phase E：制作真实参赛交付包（P1）
+
+- [ ] **R24 · P1 · 正式技术方案书**：基于当前 RC 和真实评测制作可提交的 PDF/DOCX，至少包含背景、用户、场景、架构、MoMA/OpenJiuwen 分工、可信交付链、行业 Pack、评测方法、真实结果、安全边界、部署复现、商业价值和已知限制。所有数字必须链接到官方来源或原始评测。
+- [ ] **R25 · P1 · 正式答辩 PPT**：将 12 页大纲制作成实际 `.pptx` 并导出 `.pdf`；图表只读取 R16 的真实结果，演示链接固定到当前 RC。验收：无字体溢出、无缺图、无未验证数字；逐页讲稿与 8–10 分钟/官方时长匹配；另一台电脑可打开。
+- [ ] **R26 · P1 · 正式演示视频**：录制并剪辑实际 MP4，不以 storyboard 代替。必须展示当前 RC 的 deterministic fallback、至少一段真实 Live/recorded 证据、CI 红转绿、行业 gate 和评测结果；所有模拟画面显著标识。验收：时长、分辨率、编码、文件大小满足 R23 官方要求，声音清晰，无 Token、账号、手机号或内部路径泄漏。
+- [ ] **R27 · P1 · 现场演示彩排**：在全新目录和备用电脑进行至少两次计时彩排：联网 Live 主路径一次、断网 recorded/deterministic 降级一次。验收：默认 Git 签名开启也能运行；所有命令复制即用；Live 失败能安全停止并在 30 秒内切换降级；保存彩排记录和问题闭环。
+- [ ] **R28 · P1 · 最终提交目录与清单**：按官方格式组织源代码/仓库链接、技术方案、PPT/PDF、MP4、复现指南、许可证、评测报告、原始数据索引、团队/报名材料和 checksum。生成 `SUBMISSION_MANIFEST.md`，列出文件名、版本、SHA256、来源、是否公开及上传状态。验收：从空目录按 manifest 校验全部文件，压缩包可解压、无 `.env`/数据库/缓存/临时日志/个人文件。
+- [ ] **R29 · P1 · 最终独立验收**：由未参与实现的第二人按官方规则和 reviewer guide 执行。必须同时满足：required CI 全绿、当前 RC tag 固定、三轮 Live + 恢复签收、PRD 11 项有证据、24 例评测可复算、正式材料存在、敏感扫描通过、官方规则矩阵无未知阻断项。输出最终 `PASS/FAIL` 报告；只有 PASS 才允许把作品状态改为“答辩与评审就绪”。
+
+### 建议证据目录结构
+
+```text
+docs/evidence/rc-<tag>/
+├── manifest.json
+├── environment/
+│   ├── python.txt
+│   ├── dependencies.txt
+│   └── required-workflows.json
+├── live/
+│   ├── s1-normal-delivery.json
+│   ├── s2-ci-red-remediation.json
+│   ├── s3-industry-gate.json
+│   └── s4-interrupt-resume.json
+├── benchmarks/
+│   ├── sweep-config.json
+│   ├── raw-results.jsonl
+│   ├── metrics.json
+│   ├── report.md
+│   └── failures.json
+├── security/
+│   ├── secret-scan.json
+│   └── license-audit.json
+└── SHA256SUMS
+```
+
+### 最终放行检查表
+
+- [ ] P0 的 R01–R07 全部完成，当前 RC 所有 required workflows 全绿。
+- [ ] R08–R12 的三轮真实 Live、一次恢复和 PRD 11 项签收全部完成。
+- [ ] R13–R18 的 24 例、holdout、288 条以上原始结果和可复算报告完成。
+- [ ] R19–R23 的证据回放、文档、官方规则、安全与许可证审计完成。
+- [ ] R24–R28 的方案书、PPT/PDF、视频、彩排与最终压缩包实际存在并验证。
+- [ ] R29 第二人独立验收结论为 PASS。
+- [ ] 报名、远端发布和上传由人类代表最终确认；自动化不得代替最终法律与参赛承诺。
 
 ## 本次评估已完成
 

@@ -6,14 +6,23 @@
 
 | 项 | 值 | 状态 |
 |---|---|---|
-| 基线 commit（HEAD） | `e9c2021211b7b43ada1244c8c5f40cf81d19a986` | ⚠️ 工作区含 Stage 1/2 未提交修改（CI 配置、README、CLI、smoke 等），**正式 RC 必须在提交并打 tag 后冻结**，不得用脏工作区冒充 RC |
-| Python | 3.14.7（本地）；CI 使用 3.11 | 记录双值，Live 以实际运行值为准 |
+| 基线 commit（HEAD） | Phase A（R01–R05）完成后冻结，见下方 RC 表 | 冻结见下 |
+| Python | 3.11.14（本地）；CI 使用 3.11 | 记录双值，Live 以实际运行值为准 |
 | Runtime | openjiuwen `release/v0.1.19` @ `6f3a33fbb93aece65105c477c573057fead0e8dd`（见 `pyproject.toml` runtime extra） | 已固定 |
-| 行业 Pack | `devopspilot-industry-government` v0.1.0（`industry-packs/government/pack.yaml`，digest 由 `compute_digest()` 计算） | 已固定 |
-| 评测案例 | `benchmarks/cases/`（以提交版本为准） | 待冻结 |
+| 行业 Pack | `devopspilot-industry-government` v0.1.0（`industry-packs/government/pack.yaml`） | 已固定 |
+| 评测案例 | `benchmarks/cases/` 9 例（case.json 聚合 SHA256 `b2c27dbb2f175d1406ce26e81fea9dfbb7c8c9c99a8459ada396a07b81495aed`） | 已冻结（R06） |
+| 行业 Pack digest | `fecd034c750574766ce8feef277435fe8c91d2db8bc9666777a40cef54b4d984`（SHA256） | 已冻结（R06） |
 | MoMA 模型 | coding=`Qwen3-32B`，review=`deepseek-v4.1-flash`（默认值，可被 `MOMA_CODING_MODEL`/`MOMA_REVIEW_MODEL` 覆盖；每次 run 记录实际值） | 记录于每次 run |
 
 **冻结流程**：Stage 1/2 修改提交 → 在该 commit 打 tag（如 `rc-stage3`）→ 回填本表 SHA → Live 三轮必须从该 tag 运行。
+
+### RC 冻结记录（R06，2026-09-30）
+
+- **Tag**：`rc-2026-mobile-cloud-cup-01`（后续代码变更必须生成 `-02`，不得移动旧 tag）
+- **RC commit SHA**：冻结提交后在下方回填真实 SHA
+- **Phase A 状态**：R01–R05 已完成（pytest-asyncio 依赖闭环、CI workflow 修正、Git 全局配置隔离、pytest 收集语义统一、Live 脚本退出码与业务结果绑定）
+- **Required workflows**：`Offline Regression and Gates` 对该 SHA 的 run URL 待推送后回填
+- **验证命令与结果**：`python scripts/run_offline_checks.py` → `41 passed, 0 failed`（本地 Python 3.11.14）；空 venv `pip install -e ".[test]"` 后 pytest 21 passed（R01 证据 `/tmp/r01_pip_freeze.txt`、`/tmp/r01_offline.log`）
 
 ## 2. 每次 Live Run 必须记录的字段
 
