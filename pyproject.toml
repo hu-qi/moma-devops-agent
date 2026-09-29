@@ -48,4 +48,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["experiments", "benchmarks", "tests"]
 python_files = ["test_*.py"]
+# Benchmark case fixtures contain intentionally failing oracle tests, proven by
+# `runner.py validate-fixtures`; they must not be collected as product tests.
+norecursedirs = ["benchmarks/cases/*/fixture", ".*", "build", "dist"]
 asyncio_mode = "strict"
