@@ -68,10 +68,8 @@ cd moma-devops-agent
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 安装生产与测试依赖
-pip install -r requirements.txt
-pip install -r requirements-test.txt
-pip install -e .
+# 安装（含测试依赖）
+pip install -e ".[test]"
 ```
 
 ### 2. 配置环境变量
@@ -114,6 +112,11 @@ devopspilot start --provider atomgit --repo huqi/DevOpsPilot-Test --issue 2 --in
 ```bash
 devopspilot status --delivery-id <delivery-id>
 ```
+状态标签与退出码语义（C07）：
+- `ACCEPTED (not started)` / `IN_PROGRESS / WAITING`：任务已受理或等待 CI/审查，**不会**打印 completed；
+- `FAILED`：CI 失败或验证拒绝；
+- `COMPLETED (verified)` / `COMPLETED (answered)`：验证通过（verified 阶段但验证未通过时不显示 completed）。
+- 退出码：`0` 成功（含正常查询）；`1` 用法/未找到/凭据或 API 失败等错误。
 
 ### 3. 导出交付报告 (`report`)
 支持生成包含上下文、计划、审查结论与验证记录的完整 Markdown 报告：

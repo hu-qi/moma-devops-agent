@@ -149,11 +149,32 @@ def resolve_provider_and_repo(provider_arg: str | None, repo_arg: str) -> tuple[
     return "github", repo
 
 
+def delivery_status_label(phase_value: str, verification_accepted: bool | None) -> str:
+    """C07: derived human-readable delivery status.
+
+    Distinguishes accepted / waiting / failed / verified so a pending phase
+    is never rendered as completed.
+    """
+    if phase_value == "verified" and verification_accepted is True:
+        return "COMPLETED (verified)"
+    if phase_value == "answered":
+        return "COMPLETED (answered)"
+    if phase_value == "rejected" or phase_value == "ci-failed":
+        return "FAILED"
+    if phase_value == "received":
+        return "ACCEPTED (not started)"
+    if phase_value in {"executed", "change-opened", "ci-pending", "ci-passed"}:
+        return "IN_PROGRESS / WAITING"
+    return f"UNKNOWN ({phase_value})"
+
+
 def format_state_text(delivery_id: str, version: int, state: Any) -> str:
+    verification_accepted = state.verification.accepted if state.verification else None
     lines = [
         f"Delivery ID:   {delivery_id}",
         f"State Version: {version}",
         f"Phase:         {state.phase.value}",
+        f"Status:        {delivery_status_label(state.phase.value, verification_accepted)}",
     ]
     if state.phase.value == "answered":
         lines.append("Type:          Inquiry / Direct Q&A (No PR required)")
@@ -218,14 +239,27 @@ async def run_cli(args: argparse.Namespace) -> int:
 
         if args.mode == "recorded":
             evidence_dir = Path(__file__).resolve().parents[3] / "docs" / "evidence"
-            files = sorted(p.name for p in evidence_dir.glob("*")) if evidence_dir.is_dir() else []
+            files = sorted(p for p in evidence_dir.glob("*") if p.is_file()) if evidence_dir.is_dir() else []
             if not files:
                 print("Recorded demo has no saved evidence files; nothing to present honestly.")
                 return 1
             print("=== DevOpsPilot Demo: Recorded Evidence (saved artifacts) ===")
-            for name in files:
-                print(f"- {name}")
-            print("These are the only recorded artifacts available; no fabricated run summaries.")
+            for path in files:
+                rel = path.relative_to(evidence_dir)
+                print(f"\n--- docs/evidence/{rel} ({path.stat().st_size} bytes) ---")
+                try:
+                    text = path.read_text(encoding="utf-8")
+                    lines = text.splitlines()
+                    shown = lines[:40]
+                    for line in shown:
+                        print(f"| {line}")
+                    if len(lines) > 40:
+                        print(f"| ... ({len(lines) - 40} more lines in the archived file)")
+                    print(f"Source: local archive docs/evidence/{rel}")
+                except UnicodeDecodeError:
+                    print("| (binary file; content not shown)")
+                    print(f"Source: local archive docs/evidence/{rel}")
+            print("\nThese are the actual saved artifacts above; no fabricated run summaries.")
             return 0
 
         if args.mode == "live":
@@ -244,7 +278,7 @@ async def run_cli(args: argparse.Namespace) -> int:
             # Build args through the real parser so every required attribute exists
             live_args = build_parser().parse_args([
                 "start", "--repo", live_target, "--issue", live_issue,
-                "--mode", "single_agent", "--target-branch", "main",
+                "--mode", "single_agent", "--target", "main",
                 "--db", ".devopspilot/state.db",
             ])
             return await run_cli(live_args)
@@ -266,6 +300,10 @@ async def run_cli(args: argparse.Namespace) -> int:
                 "delivery_id": stored.delivery_id,
                 "version": stored.version,
                 "phase": stored.state.phase.value,
+                "status": delivery_status_label(
+                    stored.state.phase.value,
+                    stored.state.verification.accepted if stored.state.verification else None,
+                ),
                 "commit_sha": stored.state.execution.commit_sha if stored.state.execution else None,
                 "pr_id": stored.state.change_request.change_id if stored.state.change_request else None,
             }
@@ -305,6 +343,36 @@ async def run_cli(args: argparse.Namespace) -> int:
             sys.stderr.write(f"Error: Delivery '{args.delivery_id}' not found in {args.db}\n")
             return 1
 
+        # C12: intent semantics must be unified across start/resume. A delivery
+        # paused because its intent was unresolved (or classified as inquiry)
+        # must NEVER be converted into a code-write path on resume — only an
+        # explicit trusted override (metadata.intent) may resolve it.
+        task_meta = stored.state.task.metadata or {}
+        intent_decision_meta = task_meta.get("intent_decision")
+        explicit_intent = task_meta.get("intent", "")
+        if isinstance(intent_decision_meta, dict):
+            decision_status = str(intent_decision_meta.get("status", ""))
+            decision_intent = intent_decision_meta.get("intent")
+            intent_unresolved = decision_status == "needs_clarification" and explicit_intent == ""
+            intent_inquiry = decision_intent == "inquiry" or explicit_intent == "inquiry"
+        else:
+            intent_unresolved = False
+            intent_inquiry = explicit_intent == "inquiry"
+        if stored.state.phase is DeliveryPhase.RECEIVED and (intent_unresolved or intent_inquiry):
+            sys.stderr.write(
+                f"Error: delivery {args.delivery_id} is paused with intent "
+                f"{'unresolved' if intent_unresolved else 'inquiry'}; resume would cross into a code-write path, which is forbidden.\n"
+            )
+            if intent_unresolved:
+                sys.stderr.write(
+                    "Resolve it by re-running start with an explicit trusted intent (--intent inquiry|code_change).\n"
+                )
+            else:
+                sys.stderr.write(
+                    f"Inquiry deliveries can only be retried as inquiry (see docs); delivery id: {args.delivery_id}\n"
+                )
+            return 1
+
         provider = stored.state.task.metadata.get("provider", "mock")
         repo = stored.state.task.repository.full_name
         target_br = stored.state.task.target_branch
@@ -339,7 +407,6 @@ async def run_cli(args: argparse.Namespace) -> int:
         print(f"Delivery initialized: id={deliv_id} provider={provider} repo={repo} issue={args.issue} mode={args.mode}")
 
         from devopspilot.contracts.delivery import (
-            DeliveryPhase,
             DeliveryState,
             DeliveryTask,
             ExecutionResult,
@@ -392,16 +459,26 @@ async def run_cli(args: argparse.Namespace) -> int:
             token = os.environ.get("GITHUB_TOKEN")
             if token:
                 try:
+                    from devopspilot.adapters.github.client import GitHubHTTPClient
                     from devopspilot.adapters.github.scm import GitHubSCMProvider
-                    scm_client = GitHubSCMProvider(token=token)
+                    scm_client = GitHubSCMProvider(GitHubHTTPClient(token=token))
                     live_repo = await scm_client.get_repository(repo)
-                    live_item = await scm_client.get_issue(live_repo, str(args.issue))
+                    live_item = await scm_client.get_work_item(live_repo, str(args.issue))
                     repo_ref = live_repo
                     work_item = live_item
                     real_issue_fetched = True
                     print(f"[1/5] Real GitHub API: Issue #{args.issue} resolved -> '{live_item.title}'")
                 except Exception as exc:
-                    print(f"[1/5] GitHub API Warning: {exc}. Using offline reference.")
+                    # C03: a failed live fetch must never silently degrade to a
+                    # placeholder task that later drives real writes.
+                    print(f"[1/5] GitHub API Error: {exc}", file=sys.stderr)
+                    print(
+                        f"Error: failed to fetch issue #{args.issue} from GitHub '{repo}'. "
+                        "Refusing to start with a placeholder work item. "
+                        "Check GITHUB_TOKEN, repo name, and network, or use --provider mock for offline testing.",
+                        file=sys.stderr,
+                    )
+                    return 1
             else:
                 print(f"[1/5] GitHub API: No GITHUB_TOKEN provided. Operating in offline reference mode.")
         else:
@@ -424,8 +501,17 @@ async def run_cli(args: argparse.Namespace) -> int:
             metadata=intent_metadata,
         )
 
-        from devopspilot.cli.assembly import AppConfig, assemble_live_orchestrator, setup_model_environment
+        from devopspilot.cli.assembly import (
+            AppConfig,
+            assemble_live_orchestrator,
+            load_trusted_delivery_config,
+            setup_model_environment,
+        )
         has_model = setup_model_environment()
+        # C08: operator-supplied trusted config (test command, path policy,
+        # required checks, review requirement) must reach the executor/CI/
+        # verifier through task.metadata — never sourced from Issue content.
+        trusted_config = load_trusted_delivery_config()
 
         if intent_decision.status is DecisionStatus.NEEDS_CLARIFICATION:
             # Unresolved intent: NEVER default to code change / writing.
@@ -610,6 +696,7 @@ async def run_cli(args: argparse.Namespace) -> int:
                         "mode": args.mode,
                         "provider": provider,
                         "source_branch": f"devopspilot/issue-{args.issue}-{deliv_id[-4:]}",
+                        **trusted_config,
                     },
                 )
                 opened_state = saved_opened.state

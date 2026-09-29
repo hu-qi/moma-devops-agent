@@ -373,7 +373,112 @@ def build_parser() -> argparse.ArgumentParser:
             "determined independently by DevOpsBench."
         ),
     )
+
+    sweep = sub.add_parser(
+        "sweep",
+        help=(
+            "Plan or execute a same-case-same-budget comparison sweep. "
+            "Without --execute it only prints the call scale and budget "
+            "(C22: the operator must see the scale before any real model call)."
+        ),
+    )
+    sweep.add_argument("--category", choices=["coding", "code-review", "ci-debug", "all"], default="all")
+    sweep.add_argument("--repeats", type=int, default=3, help="Runs per case per variant (minimum 3 for C22)")
+    sweep.add_argument("--variants", default="A0,A1,A2,A3", help="Comma-separated variant labels")
+    sweep.add_argument(
+        "--output",
+        default=None,
+        help="JSONL file for raw per-run records (required with --execute)",
+    )
+    sweep.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually run the sweep (requires --output); without it only the plan is printed",
+    )
     return parser
+
+
+def plan_sweep(category: str, repeats: int, variants: list[str]) -> dict[str, Any]:
+    """Compute the sweep scale without running anything (C22 transparency)."""
+    cases = []
+    for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
+        case = load_case(case_dir)
+        if category == "all" or case["category"] == category:
+            cases.append(
+                {
+                    "id": case["id"],
+                    "category": case["category"],
+                    "timeout_seconds": case["budget"]["timeout_seconds"],
+                    "max_model_calls": case["budget"]["max_model_calls"],
+                    "max_tool_calls": case["budget"]["max_tool_calls"],
+                }
+            )
+    total_runs = len(cases) * len(variants) * repeats
+    total_model_calls_cap = sum(
+        c["max_model_calls"] for c in cases
+    ) * len(variants) * repeats
+    return {
+        "mode": "plan_only (no model calls executed)",
+        "category": category,
+        "cases": len(cases),
+        "case_ids": [c["id"] for c in cases],
+        "variants": variants,
+        "repeats_per_case": repeats,
+        "total_runs": total_runs,
+        "upper_bound_model_calls": total_model_calls_cap,
+        "pricing_note": (
+            "MoMA per-model unit prices: https://ecloud.10086.cn/op-help-center/doc/article/91592 "
+            "(unverified prices are recorded as 'unestimated', never free)"
+        ),
+        "note": "Same case, same budget, same RC for all variants. Holdout cases (if marked) are excluded from tuning.",
+    }
+
+
+def run_sweep(category: str, repeats: int, variants: list[str], output: Path) -> dict[str, Any]:
+    """Execute the sweep deterministically where possible and write raw JSONL.
+
+    C22 honesty: this offline sweep re-evaluates existing candidate workspaces;
+    it does NOT fabricate model outputs. Variants without a prepared workspace
+    produce a skipped record, keeping the raw file auditable.
+    """
+    plan = plan_sweep(category, repeats, variants)
+    plan["mode"] = "execute"
+    records_written = 0
+    with output.open("w", encoding="utf-8") as fh:
+        for case_id in plan["case_ids"]:
+            for variant in variants:
+                for rep in range(1, repeats + 1):
+                    run_id = f"{variant}-{case_id}-rep{rep}"
+                    workspace = Path("benchmarks") / "workspaces" / variant / case_id
+                    record: dict[str, Any] = {
+                        "run_id": run_id,
+                        "case_id": case_id,
+                        "variant": variant,
+                        "repeat": rep,
+                    }
+                    if workspace.is_dir():
+                        try:
+                            result = evaluate_case(case_id, workspace, variant, run_id)
+                            record.update(result)
+                            record["skipped"] = False
+                        except Exception as exc:
+                            record.update({"skipped": True, "failure_reason": f"evaluation error: {exc}"})
+                    else:
+                        record.update({
+                            "skipped": True,
+                            "failure_reason": (
+                                f"no prepared workspace at {workspace}; run the real "
+                                "delivery pipeline first — synthetic metrics are forbidden"
+                            ),
+                        })
+                    fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    records_written += 1
+    return {
+        "mode": "execute",
+        "output": str(output),
+        "records_written": records_written,
+        "plan": plan,
+    }
 
 
 def main() -> None:
@@ -399,6 +504,19 @@ def main() -> None:
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         raise SystemExit(0 if result["task_success"] else 1)
+
+    if command == "sweep":
+        variants = [v.strip() for v in args.variants.split(",") if v.strip()]
+        repeats = max(1, args.repeats)
+        if not args.execute:
+            print(json.dumps(plan_sweep(args.category, repeats, variants), ensure_ascii=False, indent=2))
+            raise SystemExit(0)
+        if not args.output:
+            print("--execute requires --output (raw JSONL path)", file=sys.stderr)
+            raise SystemExit(2)
+        result = run_sweep(args.category, repeats, variants, Path(args.output))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        raise SystemExit(0)
 
     raise SystemExit(f"unsupported command: {command}")
 

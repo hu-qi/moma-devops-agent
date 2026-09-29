@@ -19,9 +19,14 @@ class DeliveryOrchestrator:
         *,
         loop: DeliveryLoop,
         store: DeliveryStateStore,
+        control_plane=None,
     ) -> None:
         self._loop = loop
         self._store = store
+        # C11: optional durable remediation control plane. When supplied,
+        # resume() drives the full loop on CI failure: RCA -> budget reserve
+        # -> same-branch repair -> re-review/test -> CI rerun -> final verify.
+        self._control_plane = control_plane
 
     async def start(
         self,
@@ -138,7 +143,17 @@ class DeliveryOrchestrator:
             reconciled = await self._loop.reconcile_ci(current.state)
             return await self._store.save(delivery_id, reconciled, expected_version=current.version)
 
-        # From CI_PASSED / CI_FAILED -> verify
+        # From CI_PASSED / CI_FAILED -> verify (CI_FAILED first goes through
+        # the durable remediation control plane when one is wired: RCA ->
+        # budget reserve -> same-branch repair -> CI rerun -> final verify).
+        if phase is DeliveryPhase.CI_FAILED and self._control_plane is not None:
+            remediated = await self._control_plane.handle_ci_failure(delivery_id, current.state)
+            saved_remediated = await self._store.save(
+                delivery_id, remediated, expected_version=current.version
+            )
+            await self._store.complete_intent(dedup_key, delivery_id)
+            return saved_remediated
+
         if phase in {DeliveryPhase.CI_PASSED, DeliveryPhase.CI_FAILED}:
             verified = await self._loop.verify(current.state)
             return await self._store.save(delivery_id, verified, expected_version=current.version)

@@ -26,7 +26,14 @@ class StandardDeliveryVerifier:
     1. task_success: CI passed on HEAD commit, execution produced non-empty commit, review approved.
     2. runtime_clean_completion: No timeout degradation or crash recovery issues.
     3. evidence_completeness: Non-empty canonical trajectory, no capture failures, full audit trail.
+
+    C10: when a trajectory store is supplied, the verifier additionally loads
+    the canonical trajectory from disk — the metadata claim alone is never
+    sufficient evidence.
     """
+
+    def __init__(self, trajectory_store=None) -> None:
+        self._trajectory_store = trajectory_store
 
     async def verify(self, state: DeliveryState) -> VerificationResult:
         evidence_list: list[str] = []
@@ -115,6 +122,39 @@ class StandardDeliveryVerifier:
         )
         if trajectory_id:
             evidence_list.append(f"trajectory:{trajectory_id}")
+
+        # C10 fail-closed: the claimed trajectory must exist as a real saved
+        # canonical artifact and actually reference this delivery — metadata
+        # declarations alone are not evidence.
+        if evidence_completeness and self._trajectory_store is not None:
+            try:
+                saved = await self._trajectory_store.load(trajectory_id)
+                if len(saved.events) != trajectory_events:
+                    raise Exception(
+                        f"trajectory event count mismatch: disk has {len(saved.events)}, "
+                        f"metadata claims {trajectory_events}"
+                    )
+                if saved.task_id and state.task.work_item.item_id and saved.task_id != state.task.work_item.item_id:
+                    raise Exception(
+                        f"trajectory task_id '{saved.task_id}' does not reference "
+                        f"delivery work item '{state.task.work_item.item_id}'"
+                    )
+                evidence_list.append(f"trajectory_disk:{self._trajectory_store.path_for(trajectory_id).name}")
+            except Exception as exc:
+                evidence_completeness = False
+                disk_reason = f"trajectory evidence not verifiable: {exc}"
+                trajectory_id = trajectory_id or ""
+                return VerificationResult(
+                    accepted=False,
+                    summary=f"Delivery evidence incomplete: {disk_reason}",
+                    evidence=tuple(evidence_list),
+                    outcome_status=DeliveryOutcomeStatus.EVIDENCE_INCOMPLETE,
+                    task_success=True,
+                    runtime_clean_completion=False,
+                    evidence_completeness=False,
+                    degradation_reason=disk_reason,
+                    escalation_path="inspect_trajectory_store_and_recompute_evidence",
+                )
 
         if not evidence_completeness:
             # Empty trajectory or capture issues MUST NOT be accepted as complete verified delivery!

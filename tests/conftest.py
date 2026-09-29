@@ -27,8 +27,8 @@ def pytest_configure(config):
         return
     for var in _LIVE_CREDENTIAL_VARS:
         os.environ.pop(var, None)
-    # Also force offline branding so tests never depend on .env URLs
-    os.environ.setdefault("PYTHONPATH", "src")
+    # Also ensure the src layout is importable without an editable install
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 @pytest.fixture(autouse=True)

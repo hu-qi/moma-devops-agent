@@ -149,12 +149,16 @@ class OpenJiuwenTaskExecutor:
         task_profiler: DeliveryTaskProfiler | None = None,
         max_iterations: int = 32,
         completion_timeout: float = 600.0,
+        trajectory_store=None,
     ) -> None:
         self._workspace_provider = workspace_provider
         self._maas_provider = maas_provider
         self._task_profiler = task_profiler or DeliveryTaskProfiler()
         self._max_iterations = max_iterations
         self._completion_timeout = completion_timeout
+        # C10: canonical trajectory persistence — evidence must be saved to
+        # disk, not just claimed in metadata.
+        self._trajectory_store = trajectory_store
 
     async def execute(self, task: DeliveryTask) -> ExecutionResult:
         workspace = await self._workspace_provider.prepare(task)
@@ -169,6 +173,8 @@ class OpenJiuwenTaskExecutor:
         task: DeliveryTask,
         workspace: ExecutionWorkspace,
     ) -> ExecutionResult:
+        import time
+        execution_started = time.monotonic()
         try:
             from openjiuwen.agent_teams import TeamAgentSpec
             from openjiuwen.core.runner import Runner
@@ -391,6 +397,19 @@ class OpenJiuwenTaskExecutor:
             f"tool_calls={runtime_metrics['tool_calls']}"
         )
 
+        # C10: persist the canonical trajectory as real evidence. A fallback
+        # trajectory (degraded capture) is still saved but is marked via its
+        # id so the verifier rejects it as incomplete evidence.
+        if self._trajectory_store is not None:
+            try:
+                saved_path = await self._trajectory_store.save(capture_result.trajectory)
+                print(f"DEVOPSPILOT_PHASE=trajectory.saved path={saved_path}")
+            except Exception as exc:
+                raise OpenJiuwenExecutionError(
+                    f"Failed to persist canonical trajectory evidence: {exc}",
+                    metadata={"trajectory_id": capture_result.trajectory.trajectory_id},
+                ) from exc
+
         await self._clean_runtime_artifacts(workspace)
         changed_paths = await self._validate_paths(workspace)
         diff = (await _run("git", "diff", "HEAD", "--", ".", cwd=workspace.path))[1]
@@ -423,6 +442,8 @@ class OpenJiuwenTaskExecutor:
             "runtime_degradation_reason": (
                 "agentteam_timeout" if runtime_timed_out else ""
             ),
+            # C14: latency recorded into the same run for benchmarking
+            "elapsed_seconds": f"{time.monotonic() - execution_started:.3f}",
         }
 
         if not diff.strip():
@@ -610,12 +631,18 @@ class OpenJiuwenTaskExecutor:
         self,
         workspace: ExecutionWorkspace,
     ) -> set[str]:
-        allowed = {
-            x for x in workspace.metadata.get("allowed_paths", "").split(",") if x
-        }
-        forbidden = {
-            x for x in workspace.metadata.get("forbidden_paths", "").split(",") if x
-        }
+        # C09: shared path policy — normalize config defensively and validate
+        # against real workspace paths (blocks absolute / .. / symlink escape).
+        from devopspilot.orchestration.path_policy import (
+            normalize_policy_paths,
+            validate_changed_paths,
+        )
+
+        allowed, forbidden = normalize_policy_paths(
+            workspace.metadata.get("allowed_paths", ""),
+            workspace.metadata.get("forbidden_paths", ""),
+            workspace_path=workspace.path,
+        )
 
         tracked = (await _run(
             "git",
@@ -639,14 +666,10 @@ class OpenJiuwenTaskExecutor:
             if line.strip()
         }
 
-        if forbidden & paths:
-            raise RuntimeError(
-                f"AgentTeam modified forbidden paths: {sorted(forbidden & paths)}"
-            )
-        if allowed and not paths.issubset(allowed):
-            raise RuntimeError(
-                f"AgentTeam modified paths outside allow-list: {sorted(paths - allowed)}"
-            )
+        try:
+            validate_changed_paths(paths, allowed=allowed, forbidden=forbidden)
+        except RuntimeError as exc:
+            raise RuntimeError(str(exc)) from exc
 
         max_changed = workspace.metadata.get("max_changed_files", "").strip()
         if max_changed and len(paths) > int(max_changed):
@@ -884,6 +907,180 @@ Constraints:
                 },
             )
 
+        # C09: shared gates — the native fallback must satisfy the SAME
+        # trusted-config enforcement as the runtime executor: path policy,
+        # oracle tamper checks, controlled test execution, and industry gates.
+        from devopspilot.orchestration.path_policy import (
+            normalize_policy_paths,
+            validate_changed_paths,
+        )
+        from devopspilot.orchestration.test_runner import (
+            OracleTamperError,
+            run_controlled_command,
+            verify_oracle_not_tampered,
+        )
+        from devopspilot.industry.gate_runner import IndustryGateRunner
+
+        forbidden_list_native = tuple(
+            x.strip() for x in workspace.metadata.get("forbidden_paths", "").split(",") if x.strip()
+        )
+        allowed_list_native = tuple(
+            x.strip() for x in workspace.metadata.get("allowed_paths", "").split(",") if x.strip()
+        )
+        try:
+            allowed_norm, forbidden_norm = normalize_policy_paths(
+                ",".join(allowed_list_native),
+                ",".join(forbidden_list_native),
+                workspace_path=workspace.path,
+            )
+            changed_now = {
+                p
+                for p in (await _run("git", "status", "--porcelain", cwd=workspace.path))[1].splitlines()
+                if p.strip()
+            }
+            changed_files = {line[3:].strip() for line in changed_now if line.strip()}
+            validate_changed_paths(
+                changed_files,
+                allowed=allowed_norm,
+                forbidden=forbidden_norm,
+            )
+        except Exception as policy_err:
+            return ExecutionResult(
+                source_branch=workspace.source_branch,
+                commit_sha="",
+                summary=f"Native execution blocked by path policy: {policy_err}",
+                published=False,
+                test_summary="No tests executed — changed paths rejected by shared path policy.",
+                review=ReviewResult(
+                    reviewer_id="moma-quality-gate",
+                    verdict=ReviewVerdict.REJECTED,
+                    diff_digest="sha256:empty",
+                    summary=f"Fail-closed: path policy violation ({policy_err}).",
+                ),
+                metadata={
+                    "execution_mode": "moma_native_fallback",
+                    "gate": "path_policy",
+                    "gate_outcome": "rejected",
+                },
+            )
+
+        if forbidden_list_native:
+            try:
+                verify_oracle_not_tampered(workspace.path, forbidden_list_native)
+            except OracleTamperError as tamper_err:
+                return ExecutionResult(
+                    source_branch=workspace.source_branch,
+                    commit_sha="",
+                    summary=f"Native execution blocked: oracle tampering detected ({tamper_err})",
+                    published=False,
+                    test_summary="No tests executed — forbidden oracle file was modified.",
+                    review=ReviewResult(
+                        reviewer_id="moma-quality-gate",
+                        verdict=ReviewVerdict.REJECTED,
+                        diff_digest="sha256:empty",
+                        summary="Fail-closed: forbidden oracle file tampered before tests.",
+                    ),
+                    metadata={
+                        "execution_mode": "moma_native_fallback",
+                        "gate": "oracle_tamper",
+                        "gate_outcome": "rejected",
+                    },
+                )
+
+        # C09: industry gates must also bind the native fallback — a bound
+        # pack's required gates run on the real workspace and a failure or
+        # timeout blocks delivery exactly like the runtime executor path.
+        industry_pack_native = task.industry_pack
+        if industry_pack_native is None and task.metadata.get("industry_pack"):
+            try:
+                import json as _json
+                from devopspilot.industry.loader import load_pack_from_dict
+                raw_pack = task.metadata.get("industry_pack")
+                data = _json.loads(raw_pack) if isinstance(raw_pack, str) else dict(raw_pack)
+                industry_pack_native = load_pack_from_dict(data)
+            except Exception:
+                industry_pack_native = None
+        if industry_pack_native is not None:
+            gate_runner_native = IndustryGateRunner()
+            gate_results = await gate_runner_native.run_gates(industry_pack_native, workspace.path)
+            failed_required = [
+                g for g in gate_results if g.required and not g.passed
+            ]
+            if failed_required:
+                failed_names = ", ".join(f"{g.name}({g.message[:80]})" for g in failed_required)
+                return ExecutionResult(
+                    source_branch=workspace.source_branch,
+                    commit_sha="",
+                    summary=f"Native execution blocked by industry gate: {failed_names}",
+                    published=False,
+                    test_summary=f"Industry gates: {sum(1 for g in gate_results if g.passed)}/{len(gate_results)} passed.",
+                    review=ReviewResult(
+                        reviewer_id="moma-quality-gate",
+                        verdict=ReviewVerdict.REJECTED,
+                        diff_digest="sha256:empty",
+                        summary=f"Fail-closed: required industry gate(s) failed — {failed_names}",
+                    ),
+                    metadata={
+                        "execution_mode": "moma_native_fallback",
+                        "gate": "industry",
+                        "gate_outcome": "rejected",
+                        "industry_gates_passed": "false",
+                    },
+                )
+
+        test_command_native = workspace.metadata.get("test_command", "").strip()
+        test_summary_native = ""
+        if test_command_native:
+            print("      [MoMA Native Agent] Verification: running controlled test command...")
+            timeout_native = float(workspace.metadata.get("test_timeout_seconds", 60.0))
+            try:
+                run_native = await run_controlled_command(
+                    test_command_native,
+                    cwd=workspace.path,
+                    timeout_seconds=timeout_native,
+                    require_non_empty=False,
+                )
+                test_summary_native = run_native.combined_output[-4000:]
+                if run_native.returncode != 0:
+                    return ExecutionResult(
+                        source_branch=workspace.source_branch,
+                        commit_sha="",
+                        summary=f"Native execution blocked: independent verification failed ({run_native.returncode}).",
+                        published=False,
+                        test_summary=test_summary_native,
+                        review=ReviewResult(
+                            reviewer_id="moma-quality-gate",
+                            verdict=ReviewVerdict.REJECTED,
+                            diff_digest="sha256:empty",
+                            summary="Fail-closed: verification command failed.",
+                        ),
+                        metadata={
+                            "execution_mode": "moma_native_fallback",
+                            "gate": "verification",
+                            "gate_outcome": "rejected",
+                        },
+                    )
+                print("      [MoMA Native Agent] Verification: passed.")
+            except Exception as verify_err:
+                return ExecutionResult(
+                    source_branch=workspace.source_branch,
+                    commit_sha="",
+                    summary=f"Native execution blocked: verification error ({verify_err})",
+                    published=False,
+                    test_summary="Verification could not be executed.",
+                    review=ReviewResult(
+                        reviewer_id="moma-quality-gate",
+                        verdict=ReviewVerdict.REJECTED,
+                        diff_digest="sha256:empty",
+                        summary=f"Fail-closed: verification error ({verify_err}).",
+                    ),
+                    metadata={
+                        "execution_mode": "moma_native_fallback",
+                        "gate": "verification",
+                        "gate_outcome": "rejected",
+                    },
+                )
+
         # 3. Stage changes and inspect diff
         await _run("git", "add", "-A", cwd=workspace.path)
         diff_out = (await _run("git", "diff", "--staged", cwd=workspace.path))[1]
@@ -995,6 +1192,21 @@ Constraints:
             ),
         )
 
+        # C10: the native fallback must persist the canonical trajectory to the
+        # shared store and reference it from execution metadata — the verifier
+        # loads the disk artifact and cross-checks the claim, so a fabricated
+        # metadata-only trajectory can never pass verification.
+        trajectory_id_native = ""
+        trajectory_events_native = 0
+        if self._trajectory_store is not None:
+            try:
+                saved_path = await self._trajectory_store.save(traj)
+                trajectory_id_native = traj.trajectory_id
+                trajectory_events_native = len(traj.events)
+                print(f"      [MoMA Native Agent] Trajectory saved: {saved_path.name}")
+            except Exception as traj_err:
+                print(f"      [MoMA Native Agent] Trajectory save failed: {traj_err}")
+
         execution_metadata = {
             "workspace_path": str(workspace.path),
             "base_commit": workspace.base_commit,
@@ -1006,6 +1218,11 @@ Constraints:
             "coding_model": coding_model,
             "review_model": review_model,
             "execution_mode": "moma_native_fallback",
+            "trajectory_id": trajectory_id_native,
+            "trajectory_event_count": str(trajectory_events_native),
+            "capture_issues": "0" if trajectory_id_native else "1",
+            # C14: latency recorded into the same run for benchmarking
+            "elapsed_seconds": f"{time.monotonic() - execution_started:.3f}",
         }
 
         raw_summary = parsed.get("summary", f"Resolved work item {task.work_item.item_id} via MoMA Agent.")

@@ -43,5 +43,5 @@ devopspilot = "devopspilot.cli.main:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["experiments", "benchmarks"]
+testpaths = ["experiments", "benchmarks", "tests"]
 python_files = ["test_*.py"]

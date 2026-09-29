@@ -52,9 +52,12 @@ def test_cli_demo_recorded_mode() -> None:
     with redirect_stdout(buf):
         exit_code = cli_main(["demo", "--mode", "recorded"])
     out = buf.getvalue()
-    # C09: recorded demo lists actual saved evidence artifacts only.
+    # C06: recorded demo shows actual archived content and its provenance,
+    # not just file names.
     assert exit_code == 0
     assert "Recorded Evidence" in out
+    assert "docs/evidence/" in out
+    assert "Source: local archive" in out
     assert "no fabricated run summaries" in out
     print("CLI_DEMO_RECORDED_MODE_OK")
 
@@ -85,11 +88,28 @@ def test_cli_demo_live_mode_safe_prompt_without_tokens() -> None:
     print("CLI_DEMO_LIVE_MODE_SAFE_PROMPT_OK")
 
 
+def test_cli_live_entry_args_parse_with_target_flag() -> None:
+    # C02: the live entry point must build args through the real parser using
+    # the actual CLI flag (--target); the old --target-branch name must fail.
+    from devopspilot.cli.main import build_parser
+
+    args = build_parser().parse_args([
+        "start", "--repo", "org/repo", "--issue", "1",
+        "--mode", "single_agent", "--target", "main",
+        "--db", ".devopspilot/state.db",
+    ])
+    assert args.target == "main"
+    assert args.repo == "org/repo"
+    assert args.issue == "1"
+    print("CLI_LIVE_ENTRY_ARGS_PARSE_OK")
+
+
 def main() -> None:
     test_demo_guide_documentation_exists_and_complete()
     test_cli_demo_deterministic_mode()
     test_cli_demo_recorded_mode()
     test_cli_demo_live_mode_safe_prompt_without_tokens()
+    test_cli_live_entry_args_parse_with_target_flag()
     print("ALL DEMO CLI AND ABLATION SMOKE TESTS PASSED.")
 
 

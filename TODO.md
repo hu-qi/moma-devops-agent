@@ -1,4 +1,4 @@
-> **2026-09-28 验收更新**：V1 纠偏与质量门禁加固已全面落地。当前全量离线回归为 **40/40 全部通过（0 失败、0 环境阻塞）**；单元测试与反例测试全量通过；凭据脱敏、意图分类与模型文本清洗防护已严格闭环。T01–T25 对应指标与功能均已真实核验。详情参见 [项目评估](docs/project-assessment-2026-09-28.md) 与 [证据索引](docs/evidence/README.md)。
+> **2026-09-28 验收更新（口径修订）**：V1 纠偏与质量门禁加固已落地。当前全量离线回归为 **40/40 全部通过（0 失败、0 环境阻塞）**；单元测试与反例测试全量通过；凭据脱敏、意图分类与模型文本清洗防护已严格闭环。T01–T18、T21、T23、T25 对应指标与功能已真实核验；**T19、T20、T22、T24 的完成声明缺乏可复算证据，已撤销勾选、保留历史记录**，待按 [比赛执行 TODO](docs/competition/TODO.md) Stage 3/4 重新验收。详情参见 [项目评估](docs/project-assessment-2026-09-28.md) 与 [证据索引](docs/evidence/README.md)。
 
 # DevOpsPilot V1 TODO
 
@@ -43,15 +43,15 @@
 - [x] **T16 · P1 · 契约/持久化**：替换未定义 Any 为明确 PackRef/协议；绑定版本与 digest；贯穿 start、state codec、resume、remediation。验收：注解可解析、旧 state 可读、新 state roundtrip 不丢 Pack，修复沿用同一版本，配置失败不再静默忽略。位置：`src/devopspilot/contracts/industry.py`、`src/devopspilot/contracts/delivery.py`、`src/devopspilot/persistence/sqlite_state.py`、`src/devopspilot/orchestration/delivery_loop.py`、`experiments/industry-pack-contract-smoke/main.py`。依赖：T12。
 - [x] **T17 · P1 · 行业规则**：选定一个行业任务并核验规则来源/适用边界，区分规范要求与工程建议。验收：每条强制规则有来源和适用条件；没有依据的规则保持建议，不能以示例宣称认证合规。位置：`src/devopspilot/contracts/industry.py`、`src/devopspilot/industry/rules/gov_audit_checker.py`、`src/devopspilot/industry/rules/finance_precision_checker.py`、`industry-packs/`、`experiments/industry-rule-engine-smoke/main.py`。
 - [x] **T18 · P1 · Gate runner**：实现受控行业 gate，替换打印 PASS / Decimal 常量示例；结果进入最终 verifier。验收：真实候选违规会失败，修复会通过，再引入缺陷会失败；required gate 超时/缺失也阻断。位置：`src/devopspilot/contracts/industry.py`、`src/devopspilot/industry/gate_runner.py`、`src/devopspilot/orchestration/verifier.py`、`experiments/industry-gate-runner-smoke/main.py`。依赖：T07、T16–T17。
-- [x] **T19 · P1 · Bench**：实现 structured-review evaluator 与有标注 oracle，扩到 coding/review/ci-debug 各至少 3 例，再完成总计 20–30 个 case。验收：正确/错误/漏报/误报可区分；固定版本、许可证/来源、holdout 与允许改动边界。位置：`benchmarks/devopsbench/review_evaluator.py`、`benchmarks/devopsbench/runner.py`、`benchmarks/cases/`（9 个真实案例）、`experiments/structured-review-evaluator-smoke/main.py`。
-- [x] **T20 · P1 · Bench/路由**：用同题同预算执行 A0/A1/A2/A3，对齐 Runtime/模型/案例版本和失败统计；每组每题至少 3 次为初始目标。验收：原始结果可复算，tokens/时间/人工介入/失败原因齐全；价格未知不记为免费；无收益就不推广 Team/候选。位置：`benchmarks/devopsbench/routing_comparator.py`、`experiments/routing-comparator-smoke/main.py`。依赖：T13、T19。
+- [ ] **T19 · P1 · Bench**：实现 structured-review evaluator 与有标注 oracle，扩到 coding/review/ci-debug 各至少 3 例，再完成总计 20–30 个 case。验收：正确/错误/漏报/误报可区分；固定版本、许可证/来源、holdout 与允许改动边界。位置：`benchmarks/devopsbench/review_evaluator.py`、`benchmarks/devopsbench/runner.py`、`benchmarks/cases/`（9 个真实案例）、`experiments/structured-review-evaluator-smoke/main.py`。
+- [ ] **T20 · P1 · Bench/路由**：用同题同预算执行 A0/A1/A2/A3，对齐 Runtime/模型/案例版本和失败统计；每组每题至少 3 次为初始目标。验收：原始结果可复算，tokens/时间/人工介入/失败原因齐全；价格未知不记为免费；无收益就不推广 Team/候选。位置：`benchmarks/devopsbench/routing_comparator.py`、`experiments/routing-comparator-smoke/main.py`。依赖：T13、T19。
 - [x] **T21 · P1 · Evolution**：真实 Report/Trajectory → 一种 Skill/Prompt Candidate → 离线 eval → gate → PENDING_HUMAN；保留版本回滚机制。验收：同 task id 贯穿全链；负增益拒绝；合成 approval 仅用于测试，生产晋级必须真实批准。位置：`src/devopspilot/contracts/evolution.py`、`src/devopspilot/evolution/engine.py`、`src/devopspilot/evolution/miner.py`、`experiments/governed-evolution-smoke/main.py`。依赖：T15、T19；与 T20 共同完成最终对照。
 
 ## Stage 5：验收与扩展
 
-- [x] **T22 · P1 · 集成**：固定发布候选 SHA，在干净环境连续完成 3 次独立真实交付，至少一次 CI 红→自动修复→绿。验收：11 条 V1 要求逐项有同一 run 的证据；fixture 可独立准备和重置。位置：`experiments/end-to-end-integration-suite/main.py`。依赖：T01–T21。
+- [ ] **T22 · P1 · 集成**：固定发布候选 SHA，在干净环境连续完成 3 次独立真实交付，至少一次 CI 红→自动修复→绿。验收：11 条 V1 要求逐项有同一 run 的证据；fixture 可独立准备和重置。位置：`experiments/end-to-end-integration-suite/main.py`。依赖：T01–T21。
 - [x] **T23 · P1 · 集成**：验证权限不足、模型不可用、CI 长时间 pending、中断恢复和预算耗尽。验收：安全停止/人工升级且保留证据，不无限重试，不把 policy failure 自动改成绕过限制。位置：`experiments/failure-boundary-governance-smoke/main.py`。依赖：T22。
-- [x] **T24 · P1 · Demo**：整理真实录屏、操作文档、架构与四组对照表，准备 live/recorded/deterministic fallback。验收：第二人能复现；历史记录有标签；没有虚构收益或隐藏 degraded。位置：`experiments/demo-cli-smoke/main.py`、[演示与消融文档](docs/demo-guide-and-ablation.md)。依赖：T22–T23。
+- [ ] **T24 · P1 · Demo**：整理真实录屏、操作文档、架构与四组对照表，准备 live/recorded/deterministic fallback。验收：第二人能复现；历史记录有标签；没有虚构收益或隐藏 degraded。位置：`experiments/demo-cli-smoke/main.py`、[演示与消融文档](docs/demo-guide-and-ablation.md)。依赖：T22–T23。
 - [x] **T25 · P2 · Provider**：在 GitHub V1 收敛后选择一个国产平台（AtomGit `huqi/DevOpsPilot-Test`），核对官方 API/CLI 契约，跑通真实 Issue→MR/PR，并严格收缩未经证实的 capabilities。验收：脱敏请求/响应和真实 run 链接齐全；平台无原生 Actions Runs 能力显式标记 unsupported 并支持 webhook-only。位置：`src/devopspilot/adapters/atomgit/`、[证据索引文档](docs/evidence/README.md)。
 
 ## 暂缓

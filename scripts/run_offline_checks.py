@@ -27,6 +27,8 @@ class CheckItem:
     name: str
     script: Path
     args: tuple[str, ...] = ()
+    # When set, run `python -m <module> [args...]` instead of executing script
+    module: str | None = None
 
 
 OFFLINE_CHECKS: tuple[CheckItem, ...] = (
@@ -72,14 +74,18 @@ OFFLINE_CHECKS: tuple[CheckItem, ...] = (
     CheckItem("script", "trajectory-metrics", ROOT / "experiments" / "trajectory-smoke" / "test_metrics.py"),
     CheckItem("script", "devopsbench-runtime-metrics", ROOT / "benchmarks" / "devopsbench" / "test_runtime_metrics.py"),
 
-    # Fixture Precondition and Lifecycle Validation
+    # Unit / contract tests under tests/ (standard pytest collection, C04)
+    CheckItem("tests", "pytest-tests", ROOT, ("-q", "tests/"), module="pytest"),
     CheckItem("fixture", "fixture-lifecycle-smoke", ROOT / "experiments" / "fixture-lifecycle-smoke" / "main.py"),
     CheckItem("fixture", "devopsbench-validate-fixtures", ROOT / "benchmarks" / "devopsbench" / "runner.py", ("validate-fixtures",)),
 )
 
 
 def run_check(item: CheckItem, python_bin: str, env: dict[str, str]) -> tuple[bool, float, str]:
-    cmd = [python_bin, str(item.script), *item.args]
+    if item.module:
+        cmd = [python_bin, "-m", item.module, *item.args]
+    else:
+        cmd = [python_bin, str(item.script), *item.args]
     start = time.perf_counter()
     try:
         proc = subprocess.run(
@@ -102,7 +108,7 @@ def run_check(item: CheckItem, python_bin: str, env: dict[str, str]) -> tuple[bo
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run DevOpsPilot offline test suite")
-    parser.add_argument("--category", choices=["all", "smoke", "script", "fixture"], default="all")
+    parser.add_argument("--category", choices=["all", "smoke", "script", "tests", "fixture"], default="all")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on first failure")
     args = parser.parse_args()
 

@@ -65,10 +65,12 @@ DevOpsPilot 是面向研发自主演进的端到端自动化交付控制面，�
 我们在同题（DevOpsBench 统一基准用例集：包含 Coding、Code-Review、CI-Debug 三类真实任务）、同预算（超时时间 60s，最大重试 3 次）的标准测试环境下，对 4 组策略进行了严格的对照评测：
 
 ### 策略定义
-- **A0 (Single Fast)**: 单一快速轻量模型（如 deepseek-v3 / gpt-4o-mini），单 Agent 实施。
-- **A1 (Single Capable)**: 单一推理强模型（如 deepseek-r1 / claude-3-5-sonnet），单 Agent 实施。
+- **A0 (Single Fast)**: 单一快速轻量模型，单 Agent 实施（MoMA 档位固定为 `Qwen3-32B`，即 C16 manifest 中的 coding 默认档）。
+- **A1 (Single Capable)**: 单一推理强模型，单 Agent 实施（MoMA 档位固定为 `deepseek-v4.1-flash` 推理档；如平台提供 R 系列推理模型则登记为该档，以 run 记录的实际 `MOMA_MODEL` 为准）。
 - **A2 (Dynamic Single)**: 根据任务上下文复杂度动态路由（简单用 Fast，复杂用 Capable），单 Agent 实施（践行 Single Agent First）。
 - **A3 (Agent Team)**: 完整多角色团队协作（Architect 拆解 + Coder 实施 + Independent Reviewer 审查），多 Agent Team。
+- **对照纪律（C21）**：四组同题同预算同 RC；旧的非 MoMA 模型举例（deepseek-v3 / gpt-4o-mini / claude 等）不再作为档位定义，统一以 MoMA 平台实际可用模型档位（含 R 系列推理档）为准；每组每题至少 3 次取分布；无显著收益就如实报告，不捏造多智能体优势。
+- **价格来源（C21/C23）**：MoMA 模型按量计费，官方价格页 <https://ecloud.10086.cn/op-help-center/doc/article/91592>（页面需浏览器渲染，逐模型单价以该页为准）；平台公开信息：单位 Token 成本较直连压降约 30%、2500 万 Token 免费额度、流式实时计费。对照表中**凡未经该页核实的模型单价一律记 `Unestimated`，不得记为免费或 0**；免费额度不抵扣对照成本核算。
 
 ### 对照数据表 (Benchmark Comparison Matrix)
 

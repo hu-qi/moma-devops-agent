@@ -51,6 +51,38 @@ class AppConfig:
         )
 
 
+# C08: trusted delivery configuration is supplied by the operator through the
+# environment (never from untrusted Issue content) and flows into
+# task.metadata -> workspace.metadata, where the executor, CI aggregator and
+# verifier actually enforce it.
+_TRUSTED_CONFIG_ENV: tuple[tuple[str, str], ...] = (
+    ("test_command", "DEVOPSPILOT_TEST_COMMAND"),
+    ("allowed_paths", "DEVOPSPILOT_ALLOWED_PATHS"),
+    ("forbidden_paths", "DEVOPSPILOT_FORBIDDEN_PATHS"),
+    ("required_checks", "DEVOPSPILOT_REQUIRED_CHECKS"),
+)
+
+
+def load_trusted_delivery_config(env: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Load operator-supplied trusted config into task metadata form.
+
+    Returns a dict suitable for merging into task_metadata. Values mirror the
+    keys the executor and delivery loop already consume: test_command,
+    allowed_paths (comma-separated), forbidden_paths (comma-separated),
+    required_checks (comma-separated), require_review ("true"/"false").
+    """
+    source = os.environ if env is None else env
+    config: dict[str, str] = {}
+    for key, var in _TRUSTED_CONFIG_ENV:
+        value = source.get(var, "").strip()
+        if value:
+            config[key] = value
+    require_review = source.get("DEVOPSPILOT_REQUIRE_REVIEW", "").strip().lower()
+    if require_review in {"true", "false"}:
+        config["require_review"] = require_review
+    return config
+
+
 def assemble_orchestrator(
     config: AppConfig,
     *,
@@ -75,7 +107,31 @@ def assemble_orchestrator(
         executor=executor,
         verifier=deliv_verifier,
     )
-    return DeliveryOrchestrator(loop=loop, store=state_store)
+
+    # C11: durable remediation control plane so resume() can drive the full
+    # CI-failure loop (RCA -> budget reserve -> same-branch repair -> CI
+    # rerun -> verify) without resetting the attempt budget on restart.
+    control_plane = None
+    try:
+        from devopspilot.adapters.openjiuwen.remediation import OpenJiuwenRemediationExecutor
+        from devopspilot.orchestration.control_plane import (
+            AutonomousDeliveryControlPlane,
+            RuleBasedCIFailureAnalyzer,
+        )
+        from devopspilot.persistence.remediation_ledger import SQLiteRemediationLedger
+
+        remediation_executor = OpenJiuwenRemediationExecutor(executor)
+        ledger = SQLiteRemediationLedger(config.db_path.parent / "remediation.db")
+        control_plane = AutonomousDeliveryControlPlane(
+            ci=ci,
+            analyzer=RuleBasedCIFailureAnalyzer(),
+            remediator=remediation_executor,
+            ledger=ledger,
+        )
+    except Exception:
+        control_plane = None
+
+    return DeliveryOrchestrator(loop=loop, store=state_store, control_plane=control_plane)
 
 
 DEFAULT_MOMA_API_BASE = "https://zhenze-huhehaote.cmecloud.cn/v1"
@@ -161,11 +217,16 @@ def assemble_live_orchestrator(
 
     from devopspilot.adapters.openjiuwen.executor import OpenJiuwenTaskExecutor
     from devopspilot.adapters.moma import MoMAProvider
+    from devopspilot.trajectory.persistent_store import FileTrajectoryStore
 
     maas = MoMAProvider.from_env()
+    # C10: one canonical trajectory store shared by executor (saves evidence)
+    # and verifier (loads and cross-checks it) — evidence is real disk state.
+    trajectory_store = FileTrajectoryStore(config.db_path.parent / "trajectories")
     inner_executor = OpenJiuwenTaskExecutor(
         workspace_provider=workspace_provider,
         maas_provider=maas,
+        trajectory_store=trajectory_store,
     )
     executor = PublishingTaskExecutor(inner_executor, publisher)
 
@@ -175,5 +236,6 @@ def assemble_live_orchestrator(
         scm=scm,
         ci=ci,
         executor=executor,
+        verifier=StandardDeliveryVerifier(trajectory_store=trajectory_store),
         store=store,
     )
