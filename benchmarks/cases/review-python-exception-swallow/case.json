@@ -1,0 +1,50 @@
+{
+  "id": "review.python.exception_swallow.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "title": "Python exception swallowing review",
+  "description": "Identify bare except clauses that silently swallow errors, hiding failures and making debugging impossible.",
+  "task": "Review api_client.py and report error-handling findings. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "api_client.py",
+    "contains": [
+      "except:",
+      "pass"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "required_findings": [
+      "exception-swallow",
+      "error-handling"
+    ]
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "reliability",
+    "exception-handling",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
+}

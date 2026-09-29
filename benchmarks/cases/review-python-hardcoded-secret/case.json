@@ -1,0 +1,51 @@
+{
+  "id": "review.python.hardcoded_secret.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "holdout": true,
+  "title": "Python hardcoded secret review",
+  "description": "Identify hardcoded API key in source code and recommend environment variable usage.",
+  "task": "Review config_loader.py and report security findings related to secret management. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "config_loader.py",
+    "contains": [
+      "API_KEY",
+      "sk-proj-REAL-KEY-1234567890abcdef"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "required_findings": [
+      "hardcoded-secret",
+      "environment-variable"
+    ]
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "security",
+    "hardcoded-secret",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
+}

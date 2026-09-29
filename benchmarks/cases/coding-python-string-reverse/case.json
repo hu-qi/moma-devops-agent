@@ -1,0 +1,49 @@
+{
+  "id": "coding.python.string_reverse.001",
+  "version": "0.1.0",
+  "holdout": true,
+  "category": "coding",
+  "title": "Python reverse words in a string",
+  "description": "Repair a string utility whose reverse_words function reverses characters instead of reversing the order of words.",
+  "task": "Fix reverse_words so it reverses the order of words in a sentence, not the characters.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "string_utils.py"
+    ],
+    "forbidden_paths": [
+      "test_string_utils.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python test_string_utils.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python test_string_utils.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 30,
+    "max_model_calls": 10,
+    "max_tool_calls": 30
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "string",
+    "deterministic"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for deterministic benchmark validation."
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "review.python.race_condition.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "title": "Python race condition review",
+  "description": "Identify unsynchronized read-modify-write pattern in a shared counter accessed by multiple threads.",
+  "task": "Review counter.py and report concurrency findings. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "counter.py",
+    "contains": [
+      "self.count += 1",
+      "threading.Thread"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "required_findings": [
+      "race-condition",
+      "thread-safety"
+    ]
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "concurrency",
+    "race-condition",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
+}

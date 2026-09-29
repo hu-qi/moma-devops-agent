@@ -1,0 +1,51 @@
+{
+  "id": "review.python.path_traversal.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "holdout": true,
+  "title": "Python path traversal review",
+  "description": "Identify path traversal vulnerability via unsanitized user input in file serving endpoint.",
+  "task": "Review file_server.py and report security findings related to path traversal. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "file_server.py",
+    "contains": [
+      "os.path.join",
+      "filename"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "required_findings": [
+      "path-traversal",
+      "input-validation"
+    ]
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "security",
+    "path-traversal",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
+}
