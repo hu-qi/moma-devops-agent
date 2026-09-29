@@ -70,7 +70,12 @@ DevOpsPilot 是面向研发自主演进的端到端自动化交付控制面，�
 - **A2 (Dynamic Single)**: 根据任务上下文复杂度动态路由（简单用 Fast，复杂用 Capable），单 Agent 实施（践行 Single Agent First）。
 - **A3 (Agent Team)**: 完整多角色团队协作（Architect 拆解 + Coder 实施 + Independent Reviewer 审查），多 Agent Team。
 - **对照纪律（C21）**：四组同题同预算同 RC；旧的非 MoMA 模型举例（deepseek-v3 / gpt-4o-mini / claude 等）不再作为档位定义，统一以 MoMA 平台实际可用模型档位（含 R 系列推理档）为准；每组每题至少 3 次取分布；无显著收益就如实报告，不捏造多智能体优势。
-- **价格来源（C21/C23）**：MoMA 模型按量计费，官方价格页 <https://ecloud.10086.cn/op-help-center/doc/article/91592>（页面需浏览器渲染，逐模型单价以该页为准）；平台公开信息：单位 Token 成本较直连压降约 30%、2500 万 Token 免费额度、流式实时计费。对照表中**凡未经该页核实的模型单价一律记 `Unestimated`，不得记为免费或 0**；免费额度不抵扣对照成本核算。
+- **官方核实价格表（C21/C23）**：移动云 MoMA 平台官方价格页（<https://ecloud.10086.cn/op-help-center/doc/article/91592>，更新时间：2026/09/23，详见 `benchmarks/devopsbench/moma_prices.json`）：
+  - **Qwen3-32B** (A0 默认档)：输入 2.0 元/百万 tokens；输出（非思考模式）8.0 元/百万 tokens，输出（思考模式）20.0 元/百万 tokens。
+  - **DeepSeek-V4.1-Flash** (A1 默认档)：输入 2.0 元/百万 tokens；输出 8.0 元/百万 tokens；缓存命中 0.04 元/百万 tokens；夜间输入 1.0 元/百万 tokens，输出 4.0 元/百万 tokens。
+  - **DeepSeek-R1** (推理旗舰档)：输入 4.0 元/百万 tokens；输出 16.0 元/百万 tokens。
+  - **DeepSeek-V3**：输入 2.0 元/百万 tokens；输出 8.0 元/百万 tokens。
+  - **计费纪律**：按量计费全额计入成本核算，平台 2500 万 Token 体验额度不抵扣对照实验成本；未在官方价格表中核实的模型一律记 `Unestimated`，绝不记为 $0.0 免费。
 
 ### 对照数据表 (Benchmark Comparison Matrix)
 

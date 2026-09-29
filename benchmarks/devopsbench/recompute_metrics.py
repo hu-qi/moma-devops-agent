@@ -129,7 +129,11 @@ def main() -> int:
 
     prices = None
     if args.prices:
-        prices = json.loads(Path(args.prices).read_text(encoding="utf-8"))
+        raw_prices = json.loads(Path(args.prices).read_text(encoding="utf-8"))
+        if "models" in raw_prices and isinstance(raw_prices["models"], dict):
+            prices = raw_prices["models"]
+        else:
+            prices = raw_prices
 
     result = recompute(load_records(raw), prices)
     text = json.dumps(result, ensure_ascii=False, indent=2)
