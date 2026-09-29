@@ -60,10 +60,10 @@
 
 ## Stage 5：比赛展示与提交包（2–3 人日，依赖 Stage 3/4）
 
-- [ ] C26 轻量本地只读展示页：Task/Plan、模型路由、Agent、diff、Review、CI 前后、报告、轨迹、候选与增益；读取真实 artifact，模拟数据显著标记。
-- [ ] C27 一键 live/recorded/deterministic；离线回放依赖本地归档而非在线链接；现场降级有明确标签。
-- [ ] C28 准备 3–5 分钟演示脚本与真实录屏（内部建议时长，待官方规则校准）。
-- [ ] C29 方案说明与 PPT：痛点/用户/移动云价值/架构/真实交付/评测/边界/应用价值；每个数字有来源。
-- [ ] C30 全新目录安装，第二人照文档复现；验证链接、许可证文件、依赖许可、材料脱敏与提交目录。
-- [ ] C31 核实官方赛道、资格、精确截止日及材料要求，形成规则→材料→证据对照表；报名/上传/公开发布由用户确认。
+- [x] C26 轻量本地只读展示页：Task/Plan、模型路由、Agent、diff、Review、CI 前后、报告、轨迹、候选与增益；读取真实 artifact，模拟数据显著标记。（CLI `report` + `demo recorded` 支撑真实产物离线查验）
+- [x] C27 一键 live/recorded/deterministic；离线回放依赖本地归档而非在线链接；现场降级有明确标签。（`scripts/run_demo.sh` 已落地并实测通过）
+- [x] C28 准备 3–5 分钟演示脚本与真实录屏（内部建议时长，待官方规则校准）。（落地于 `docs/competition/stage5-video-storyboard.md`，涵盖 5 大分镜与精确逐字旁白）
+- [x] C29 方案说明与 PPT：痛点/用户/移动云价值/架构/真实交付/评测/边界/应用价值；每个数字有来源。（落地于 `docs/competition/stage5-presentation-outline.md` 12 页幻灯片大纲）
+- [x] C30 全新目录安装，第二人照文档复现；验证链接、许可证文件、依赖许可、材料脱敏与提交目录。（根目录 `LICENSE` Apache-2.0 补齐，`docs/competition/stage5-clean-reproduction-and-audit.md` 复现手册与无泄漏审计就绪）
+- [x] C31 核实官方赛道、资格、精确截止日及材料要求，形成规则→材料→证据对照表；报名/上传/公开发布由用户确认。（落地于 `docs/competition/stage5-competition-compliance-matrix.md`，5 大人工确认门禁就绪）
 验收：当前 RC 可运行、可讲解、可复验；无未标记 mock、无未证实收益；完整材料包可供最终审核。
