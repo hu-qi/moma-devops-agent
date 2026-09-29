@@ -55,4 +55,16 @@ jobs:
       - name: Run real TaskExecutor against DevOpsBench
         env:
           PYTHONPATH: src
-        run: python experiments/openjiuwen-task-executor/main.py
+        run: |
+          python experiments/openjiuwen-task-executor/main.py | tee executor-output.log
+          python -c "
+          import json, re, sys
+          text = open('executor-output.log').read()
+          assert 'DEVOPSBENCH_ARTIFACT_DIGEST=sha256:' in text, 'missing artifact digest marker'
+          m = re.search(r'^\{.*\}$', text.split('DEVOPSBENCH_ARTIFACT_DIGEST=')[1], re.M | re.S)
+          summary = json.loads(m.group(0))
+          for key in ('task_success', 'runtime_clean_completion', 'oracle', 'commit_sha'):
+              assert key in summary, f'missing terminal field: {key}'
+          assert summary['task_success'] is True, 'task_success must be true'
+          print('TERMINAL_STATE_OK')
+          "

@@ -56,7 +56,21 @@ jobs:
       - name: Run baseline versus candidate
         env:
           PYTHONPATH: src
-        run: python experiments/skill-evolution-devopsbench-ab/main.py
+        run: |
+          python experiments/skill-evolution-devopsbench-ab/main.py | tee ablation-output.log
+          python -c "
+          import json, re, os, sys
+          text = open('ablation-output.log').read()
+          line = [l for l in text.splitlines() if l.startswith('SKILL_EVOLUTION_FINAL_RESULT=')]
+          assert line, 'missing structured terminal state'
+          summary = json.loads(line[0].split('=', 1)[1])
+          for key in ('status', 'task_success', 'runtime_clean_completion', 'oracle', 'gate', 'artifact'):
+              assert key in summary, f'missing terminal field: {key}'
+          if summary['status'] == 'rejected':
+              assert summary['expected_rejection'] is True, 'unexpected rejection'
+          assert summary['artifact']['digest'].startswith('sha256:')
+          print('TERMINAL_STATE_OK')
+          "
 
       - name: Verify production Skill is untouched
         shell: bash

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -320,8 +323,20 @@ async def main() -> None:
 
     if evidence.gate_passed:
         assert decision.state is ApprovalState.PENDING_HUMAN
+        expected_rejection = False
     else:
         assert decision.state is ApprovalState.REJECTED
+        expected_rejection = (
+            os.environ.get("EXPECTED_REJECTION", "").lower() == "true"
+        )
+        if not expected_rejection:
+            print(
+                "SKILL_EVOLUTION_GATE_REJECTED: gate did not pass. If this run "
+                "is intended to prove negative-rejection semantics, set "
+                "EXPECTED_REJECTION=true; otherwise the job must fail.",
+                file=sys.stderr,
+            )
+            return 1
 
     if production_log.exists():
         raise RuntimeError("A/B evaluation mutated production Skill state")
@@ -374,6 +389,36 @@ async def main() -> None:
     )
     print("SKILL_EVOLUTION_PRODUCTION_MUTATION=false")
 
+    # Structured terminal state: the workflow verifier parses this JSON and
+    # checks the expected mode (positive-ablation vs expected-rejection).
+    final_summary = {
+        "status": "rejected" if not evidence.gate_passed else "pending_human",
+        "expected_rejection": expected_rejection,
+        "task_success": {
+            "baseline": baseline_detail["task_success"],
+            "candidate": candidate_detail["task_success"],
+        },
+        "runtime_clean_completion": {
+            "baseline": baseline_detail["runtime_clean_completion"],
+            "candidate": candidate_detail["runtime_clean_completion"],
+        },
+        "oracle": {
+            "baseline": baseline_detail["oracle"],
+            "candidate": candidate_detail["oracle"],
+        },
+        "gate": result["gate"],
+        "production_skill_mutated": result["production_skill_mutated"],
+        "artifact": {
+            "path": str(output),
+            "digest": "sha256:"
+            + hashlib.sha256(output.read_bytes()).hexdigest(),
+        },
+    }
+    print("SKILL_EVOLUTION_FINAL_RESULT=" + json.dumps(
+        final_summary, ensure_ascii=False, sort_keys=True,
+    ))
+    return 0
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))

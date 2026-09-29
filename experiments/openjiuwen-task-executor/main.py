@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -98,7 +101,7 @@ def benchmark_eval(workspace: Path) -> dict:
     return report
 
 
-async def main() -> None:
+async def main() -> int:
     provider = BenchmarkWorkspaceProvider()
     executor = OpenJiuwenTaskExecutor(
         provider,
@@ -130,6 +133,16 @@ async def main() -> None:
     result = await executor.execute(task)
     workspace = Path(result.metadata["workspace_path"])
 
+    runtime_degraded = result.metadata.get("runtime_degraded") == "true"
+    allow_degraded = os.environ.get("ALLOW_RUNTIME_DEGRADED", "").lower() == "true"
+    if runtime_degraded and not allow_degraded:
+        print(
+            "RUNTIME_DEGRADED_NOT_ALLOWED: set ALLOW_RUNTIME_DEGRADED=true to "
+            "accept a degraded run; otherwise the job must fail.",
+            file=sys.stderr,
+        )
+        return 1
+
     assert result.published is False
     assert result.commit_sha == run("git", "rev-parse", "HEAD", cwd=workspace)
     assert result.metadata.get("trajectory_id")
@@ -138,7 +151,6 @@ async def main() -> None:
     assert int(result.metadata.get("tool_calls", "0")) > 0
     assert int(result.metadata.get("input_tokens", "0")) > 0
     assert result.metadata.get("runtime_degraded") in {"true", "false"}
-
     changed = run(
         "git", "diff", "--name-only", "HEAD^", "HEAD", cwd=workspace
     ).splitlines()
@@ -157,27 +169,36 @@ async def main() -> None:
     print("AGENTTEAM_REVIEW_GATE_OK")
     print("LOCAL_COMMIT_OK")
     print("DEVOPSBENCH_ORACLE_OK")
-    print(json.dumps({
-        "commit_sha": result.commit_sha,
-        "changed_files": changed,
+    final_summary = {
+        "status": "completed",
         "task_success": report["task_success"],
         "test_pass": report["test_pass"],
-        "workspace": str(workspace),
-        "leader_model": result.metadata.get("leader_model"),
-        "coding_model": result.metadata.get("coding_model"),
-        "review_model": result.metadata.get("review_model"),
-        "model_router_names": result.metadata.get("model_router_names"),
+        "runtime_clean_completion": not runtime_degraded,
+        "runtime_degraded": result.metadata.get("runtime_degraded"),
+        "runtime_degradation_reason": result.metadata.get("runtime_degradation_reason"),
+        "oracle": report,
+        "commit_sha": result.commit_sha,
+        "changed_files": changed,
         "trajectory_id": result.metadata.get("trajectory_id"),
         "trajectory_event_count": result.metadata.get("trajectory_event_count"),
         "model_calls": result.metadata.get("model_calls"),
         "tool_calls": result.metadata.get("tool_calls"),
         "input_tokens": result.metadata.get("input_tokens"),
         "output_tokens": result.metadata.get("output_tokens"),
+        "leader_model": result.metadata.get("leader_model"),
+        "coding_model": result.metadata.get("coding_model"),
+        "review_model": result.metadata.get("review_model"),
         "capture_issues": result.metadata.get("capture_issues"),
-        "runtime_degraded": result.metadata.get("runtime_degraded"),
-        "runtime_degradation_reason": result.metadata.get("runtime_degradation_reason"),
-    }, ensure_ascii=False, indent=2))
+        "workspace": str(workspace),
+    }
+    # Artifact digest binds this run to the exact structured terminal state.
+    digest_payload = json.dumps(final_summary, ensure_ascii=False, sort_keys=True)
+    print("DEVOPSBENCH_ARTIFACT_DIGEST=sha256:" + hashlib.sha256(
+        digest_payload.encode("utf-8")
+    ).hexdigest())
+    print(json.dumps(final_summary, ensure_ascii=False, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))
