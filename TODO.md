@@ -50,7 +50,7 @@
 ### Phase D：修复演示、文档与证据可信度（P1）
 
 - [ ] **R19 · P1 · Recorded 模式可携带复现**：`demo --mode recorded` 只能展示已跟踪或随 release 发布的当前 RC 原始产物，不能依赖被 `*.log` 忽略的本机文件，也不能只展示 README/索引。验收：全新 clone 离线运行可看到三轮 Live 的结构化摘要、真实链接、SHA、降级、失败和 artifact digest；缺任何必要证据时返回非零。
-- [ ] **R20 · P1 · 文档路径与命令审计**：修正专家指南中不存在的 `src/devopspilot/scm/`、`orchestration/planner.py`、`tests/test_cli_smoke.py` 等路径；统一 40/41、Python 版本、安装命令、CLI 参数、模型名和 RC SHA。验收：自动检查 Markdown 相对链接、反引号内仓库路径和 shell 命令；所有示例在干净环境执行通过。
+- [ ] **R20 · P1 · 文档路径与命令审计**：修正专家指南中不存在的旧路径（如旧 scm 模块、旧 planner.py、旧 test_cli_smoke.py 等）；统一 40/41、Python 版本、安装命令、CLI 参数、模型名和 RC SHA。验收：自动检查 Markdown 相对链接、反引号内仓库路径和 shell 命令；所有示例在干净环境执行通过。
 - [ ] **R21 · P1 · 撤销夸大与矛盾状态**：同步更新 `README.md`、`IMPLEMENTATION_PLAN.md`、`docs/competition/TODO.md`、合规矩阵、专家指南、分镜和 PPT 大纲。删除或降级“全部完成”“100% 覆盖”“完全满足”“当前 RC 全绿”“视频/PPT 已就绪”等无证据表述；规划必须标 `Planned`，dry-run 标 `Simulated`，历史 Live 标 `Historical`，当前 RC 标 `Current RC`。
 - [ ] **R22 · P1 · 安全与许可证审计可执行化**：将凭据、Git 历史敏感文件、个人信息 fixture、依赖许可证检查变成有命令、版本和输出的审计流程，不允许仅在 Markdown 中手工写 PASS。验收：扫描器或脚本对当前 SHA 运行，结果和 allowlist 入库；真实密钥模式命中必须阻断；占位符有明确例外；第三方依赖许可证来自锁定版本的实际元数据。
 - [ ] **R23 · P1 · 官方规则重新核验**：只使用移动云官方页面、报名系统、官方通知或组委会书面确认，核实赛道、资格、截止时间、评分权重、指定平台要求、原创/开源限制、PPT/视频/压缩包格式和大小。位置：`docs/competition/stage5-competition-compliance-matrix.md`。验收：每条规则有可访问 URL、页面标题、读取日期和原文摘要；未公布项写“待官方确认”，不得标 PASS。

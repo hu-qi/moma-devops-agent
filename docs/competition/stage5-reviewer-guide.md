@@ -54,15 +54,15 @@ python3 scripts/run_offline_checks.py
 
 | # | PRD 规格要求 | 核心实现文件 | 自动化验证用例 / 运行脚本 | 证据类型 |
 |---|---|---|---|---|
-| **1** | 正确理解任务与仓库上下文 | `src/devopspilot/cli/main.py`<br>`src/devopspilot/scm/` | `tests/test_cli_smoke.py`<br>`experiments/cli-smoke/main.py` | 确定性代码 + 集成测试 |
-| **2** | 形成可解释执行计划 | `src/devopspilot/orchestration/planner.py` | `experiments/end-to-end-integration-suite/` (Run 1) | 执行日志与 Plan 快照 |
+| **1** | 正确理解任务与仓库上下文 | `src/devopspilot/cli/main.py`<br>`src/devopspilot/adapters/` | `experiments/cli-smoke/main.py` | 确定性代码 + 集成测试 |
+| **2** | 形成可解释执行计划 | `src/devopspilot/routing/execution_planner.py` | `experiments/end-to-end-integration-suite/` (Run 1) | 执行日志与 Plan 快照 |
 | **3** | 根据任务选择模型能力档 | `src/devopspilot/adapters/moma/`<br>`src/devopspilot/orchestration/` | `benchmarks/devopsbench/runner.py`<br>`docs/competition/stage3-rc-manifest.md` | MoMA 官方价格与路由决策 |
 | **4** | 必要时动态组建 AgentTeam | `src/devopspilot/adapters/openjiuwen/executor.py` | `tests/test_path_policy_and_review.py` | 单/多 Agent 动态分支 |
 | **5** | 完成代码修改与隔离测试 | `src/devopspilot/orchestration/path_policy.py` | `tests/test_path_policy_and_review.py` | 路径白名单防逃逸断言 |
 | **6** | 独立 Reviewer 强制验证 | `src/devopspilot/orchestration/verifier.py` | `tests/test_path_policy_and_review.py` | 缺失/REJECT 阻断断言 |
-| **7** | 创建规范 Pull Request | `src/devopspilot/scm/github.py`<br>`src/devopspilot/scm/atomgit.py` | `experiments/end-to-end-integration-suite/` | PR 打开与状态流转 |
+| **7** | 创建规范 Pull Request | `src/devopspilot/adapters/github/scm.py`<br>`src/devopspilot/adapters/atomgit/scm.py` | `experiments/end-to-end-integration-suite/` | PR 打开与状态流转 |
 | **8** | CI 结果 + 失败自动同分支修复 | `src/devopspilot/orchestration/service.py` | `experiments/end-to-end-integration-suite/` (Run 2) | 红转绿 RCA 追加 Commit |
-| **9** | 输出标准 Delivery Report | `src/devopspilot/cli/main.py` (`report` 子命令) | `tests/test_cli_smoke.py` | JSON / Markdown 报告 |
+| **9** | 输出标准 Delivery Report | `src/devopspilot/cli/main.py` (`report` 子命令) | `experiments/cli-smoke/main.py` | JSON / Markdown 报告 |
 | **10** | 持久化完整 Trajectory | `src/devopspilot/trajectory/persistent_store.py` | `tests/test_trajectory_evidence.py` | 磁盘文件与摘要核验 |
 | **11** | 离线评测与受控进化候选 | `src/devopspilot/evolution/engine.py` | `experiments/governed-evolution-smoke/main.py` | 负收益阻断、PENDING_HUMAN、回滚 |
 
