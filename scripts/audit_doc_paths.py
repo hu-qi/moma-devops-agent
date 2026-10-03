@@ -77,6 +77,8 @@ def audit_repo_paths(md_file: Path) -> list[dict]:
             repo_path = match.group(1).rstrip("/")
             # Strip trailing punctuation that leaked into the backtick
             repo_path = repo_path.rstrip(".,;:)")
+            # Strip trailing :lineno or :lineno:col from file:line notations
+            repo_path = re.sub(r":\d+(?::\d+)?$", "", repo_path)
 
             # Skip templates like docs/evidence/rc-<tag>/...
             if "<" in repo_path or ">" in repo_path or "{" in repo_path:
