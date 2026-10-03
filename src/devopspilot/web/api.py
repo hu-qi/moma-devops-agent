@@ -192,17 +192,77 @@ def register_dashboard_apis(
                 except Exception:
                     pass
 
+                # Sanitize any sensitive credentials from payload
+                def _sanitize(obj: Any) -> Any:
+                    if isinstance(obj, dict):
+                        return {
+                            k: "***REDACTED***" if any(s in k.lower() for s in ["token", "key", "secret", "password"])
+                            else _sanitize(v)
+                            for k, v in obj.items()
+                        }
+                    elif isinstance(obj, list):
+                        return [_sanitize(v) for v in obj]
+                    return obj
+
                 return {
                     "delivery_id": row["delivery_id"],
                     "version": row["version"],
                     "phase": row["phase"],
-                    "task": task_obj,
-                    "payload": payload_obj,
+                    "task": _sanitize(task_obj),
+                    "payload": _sanitize(payload_obj),
                     "created_at": row["created_at"],
                     "updated_at": row["updated_at"],
                 }
         except Exception:
             return None
+
+    # 3b. Create / Trigger Delivery Task API
+    @router.post("/api/deliveries")
+    def handle_create_delivery(body: dict[str, Any], query: Mapping[str, list[str]]) -> dict[str, Any]:
+        repo = str(body.get("repo", "")).strip()
+        issue = str(body.get("issue", "")).strip()
+        if not repo or not issue:
+            return {"success": False, "error": "Both 'repo' and 'issue' are required fields"}
+
+        provider = str(body.get("provider", "atomgit")).strip()
+        mode = str(body.get("mode", "single_agent")).strip()
+        intent = body.get("intent")
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "devopspilot.cli.main",
+            "start",
+            "--provider",
+            provider,
+            "--repo",
+            repo,
+            "--issue",
+            issue,
+            "--mode",
+            mode,
+            "--db",
+            str(actual_db_path),
+        ]
+        if intent:
+            cmd.extend(["--intent", str(intent)])
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            return {
+                "success": proc.returncode == 0,
+                "exit_code": proc.returncode,
+                "stdout": proc.stdout[-1500:] if proc.stdout else "",
+                "stderr": proc.stderr[-1500:] if proc.stderr else "",
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
 
     # 4. List Trajectories API
     @router.get("/api/trajectories")
@@ -229,11 +289,11 @@ def register_dashboard_apis(
         if not actual_traj_dir.is_dir():
             return None
         safe_id = traj_id.replace("/", "_").replace("\\", "_")
-        target = actual_traj_dir / f"{safe_id}.json"
+        target = (actual_traj_dir / f"{safe_id}.json").resolve()
         if not target.is_file():
-            # Try without .json suffix if already included
-            target = actual_traj_dir / safe_id
-        if not target.is_file():
+            target = (actual_traj_dir / safe_id).resolve()
+        # Path traversal guard: must be strictly inside actual_traj_dir
+        if not target.is_file() or not target.is_relative_to(actual_traj_dir.resolve()):
             return None
 
         try:

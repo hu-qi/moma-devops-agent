@@ -137,6 +137,16 @@ devopspilot demo --mode recorded
 devopspilot demo --mode live
 ```
 
+### 5. 启动后台管理 Web 控制台 (`serve`)
+DevOpsPilot 提供零外部依赖的原生 Web 管理控制台，用于实时观测交付指标、检查行业合规规则、回放执行轨迹与交互式运行评测：
+```bash
+# 使用统一 CLI 启动控制台（默认 http://127.0.0.1:8080）
+devopspilot serve
+
+# 或通过独立启动脚本直接运行
+python3 scripts/serve_dashboard.py --port 8080
+```
+
 ---
 
 ## 🧪 验证与质量保证

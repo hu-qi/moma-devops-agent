@@ -102,3 +102,32 @@ def test_api_not_found(dashboard_server):
     with pytest.raises(urllib.error.HTTPError) as exc_info:
         urllib.request.urlopen(url, timeout=5)
     assert exc_info.value.code == 404
+
+
+def test_api_create_delivery_validation(dashboard_server):
+    port = dashboard_server.server_address[1]
+    url = f"http://127.0.0.1:{port}/api/deliveries"
+
+    # Missing repo/issue should return validation error
+    req = urllib.request.Request(
+        url,
+        data=json.dumps({"provider": "atomgit"}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["success"] is False
+        assert "required" in data["error"]
+
+
+def test_api_trajectory_path_traversal_blocked(dashboard_server):
+    port = dashboard_server.server_address[1]
+    # Attempting directory traversal should be safely rejected
+    url = f"http://127.0.0.1:{port}/api/trajectories/.._.._etc_passwd"
+
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(url, timeout=5)
+    assert exc_info.value.code == 404
+
