@@ -143,11 +143,11 @@ devopspilot demo --mode live
 
 DevOpsPilot 严格遵守“证据可复验、拒绝伪造通过”的工程准则。
 
-### 1. 全量离线回归套件 (40 Checks)
+### 1. 全量离线回归套件 (41 Checks)
 ```bash
 python3 scripts/run_offline_checks.py
 ```
-> **当前状态**：**40 passed, 0 failed**（覆盖 35 项核心 Smoke 测试、3 项度量脚本与 2 项 Fixture 生命周期校验）。
+> **当前状态**：**41 passed, 0 failed**（覆盖 35 项核心 Smoke 测试、4 项度量脚本与 2 项 Fixture 生命周期校验）。
 
 ### 2. 连续 3 次独立全流程交付验证
 ```bash

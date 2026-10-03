@@ -21,14 +21,14 @@
 
 | # | 官方申报材料要求 | 本项目对应材料文档 / 代码产物 | 核心内容与证据支撑 | 状态 |
 |---|---|---|---|---|
-| **1** | **项目源代码包** | `src/devopspilot/`<br>`tests/`<br>`benchmarks/` | 完整控制面、适配器、门禁、持久化存储与 CLI 实现；全量 41 项离线测试全绿 | **就绪** |
-| **2** | **技术方案说明书** | `docs/competition/stage5-presentation-outline.md`<br>`README.md` | 行业痛点、架构全景、MoMA 平台价值（降本 30%）、Single Agent First 理念 | **就绪** |
-| **3** | **答辩演示文稿 (PPT)** | `docs/competition/stage5-presentation-outline.md` (§二) | 12 页幻灯片完整结构、图表设计、讲稿要点与数据来源 | **就绪** |
-| **4** | **演示视频与分镜脚本** | `docs/competition/stage5-video-storyboard.md` | 3 分 30 秒标准分镜：特性交付、CI 红灯 RCA、断点 resume、合规拦截、DevOpsBench | **就绪** |
-| **5** | **专家快速复现指南** | `docs/competition/stage5-reviewer-guide.md` | 3 分钟一键复现路径、PRD 11 条成功指标核验表、工程已知边界说明 | **就绪** |
-| **6** | **消融评测与对照报告** | `docs/demo-guide-and-ablation.md`<br>`benchmarks/devopsbench/` | A0–A3 同题同预算基准；MoMA 官方自营模型资费（91592号文档）；`recompute_metrics.py` | **就绪** |
-| **7** | **开源许可证与合规自查** | `LICENSE` (Apache-2.0)<br>`docs/competition/stage5-clean-reproduction-and-audit.md` | 根目录许可证、依赖兼容性矩阵、敏感凭据脱敏扫描报告（无泄漏） | **就绪** |
-| **8** | **确定性演示脚本** | `scripts/run_demo.sh` | 一键运行 deterministic / recorded / live 三条路径 | **就绪** |
+| **1** | **项目源代码包** | `src/devopspilot/`<br>`tests/`<br>`benchmarks/` | 完整控制面、适配器、门禁、持久化存储与 CLI 实现；全量 41 项离线测试全绿 | **已就绪 (Current RC)** |
+| **2** | **技术方案说明书** | `docs/competition/stage5-presentation-outline.md`<br>`README.md` | 行业痛点、架构全景、MoMA 平台价值（降本 30%）、Single Agent First 理念 | **大纲就绪 / 待排版定稿 (Planned)** |
+| **3** | **答辩演示文稿 (PPT)** | `docs/competition/stage5-presentation-outline.md` (§二) | 12 页幻灯片完整结构、图表设计、讲稿要点与数据来源 | **大纲就绪 / PPTX制作中 (Planned)** |
+| **4** | **演示视频与分镜脚本** | `docs/competition/stage5-video-storyboard.md` | 3 分 30 秒标准分镜：特性交付、CI 红灯 RCA、断点 resume、合规拦截、DevOpsBench | **分镜就绪 / MP4录制中 (Planned)** |
+| **5** | **专家快速复现指南** | `docs/competition/stage5-reviewer-guide.md` | 3 分钟一键复现路径、PRD 11 条成功指标核验表、工程已知边界说明 | **已就绪 (Current RC)** |
+| **6** | **消融评测与对照报告** | `docs/demo-guide-and-ablation.md`<br>`benchmarks/devopsbench/` | A0–A3 同题同预算基准；MoMA 官方自营模型资费（91592号文档）；`recompute_metrics.py` | **题库与契约就绪 / 评测运行中 (Planned)** |
+| **7** | **开源许可证与合规自查** | `LICENSE` (Apache-2.0)<br>`docs/competition/stage5-clean-reproduction-and-audit.md` | 根目录许可证、依赖兼容性矩阵、敏感凭据脱敏扫描报告（无泄漏） | **已就绪 (Current RC)** |
+| **8** | **确定性演示脚本** | `scripts/run_demo.sh` | 一键运行 deterministic / recorded / live 三条路径 | **已就绪 (Current RC / Simulated)** |
 
 ---
 
