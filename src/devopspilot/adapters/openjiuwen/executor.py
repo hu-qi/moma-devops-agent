@@ -496,7 +496,10 @@ class OpenJiuwenTaskExecutor:
                     metadata=execution_metadata,
                 ) from exc
 
-            test_summary = run_res.combined_output[-4000:]
+            test_summary = (
+                f"Command: {test_command}\nExit code: {run_res.returncode}\n"
+                + run_res.combined_output[-4000:]
+            )
             if run_res.returncode != 0:
                 raise OpenJiuwenExecutionError(
                     f"Independent verification failed ({run_res.returncode}):\n{test_summary}",
@@ -543,6 +546,23 @@ class OpenJiuwenTaskExecutor:
             workspace.metadata.get("require_review", "").lower() == "true"
             or task.metadata.get("require_review", "").lower() == "true"
         )
+        if require_review and review_result is None and os.environ.get("MOMA_API_KEY"):
+            from devopspilot.adapters.moma.client import MoMAClient
+            from devopspilot.adapters.moma.review import review_diff
+            print("DEVOPSPILOT_PHASE=independent_review.start")
+            review_result, review_events = await asyncio.to_thread(
+                review_diff, MoMAClient(timeout=float(os.environ.get("MOMA_TIMEOUT", "120"))),
+                model=model_routing.review_model, diff=diff_after_test,
+                test_summary=test_summary,
+                sequence=max((e.sequence for e in capture_result.trajectory.events), default=-1) + 1,
+            )
+            reviewed_trajectory = replace(capture_result.trajectory, events=capture_result.trajectory.events + review_events)
+            if self._trajectory_store is not None:
+                await self._trajectory_store.save(reviewed_trajectory)
+            reviewed_metrics = trajectory_runtime_metrics(reviewed_trajectory)
+            execution_metadata.update({k: str(reviewed_metrics[k]) for k in ("model_calls", "tool_calls", "input_tokens", "output_tokens")})
+            execution_metadata["trajectory_event_count"] = str(len(reviewed_trajectory.events))
+            print(f"DEVOPSPILOT_PHASE=independent_review.complete verdict={review_result.verdict.value}")
         if require_review:
             try:
                 enforce_review_gate(
@@ -582,6 +602,8 @@ class OpenJiuwenTaskExecutor:
             "git", "rev-parse", "HEAD", cwd=workspace.path
         ))[1].strip()
         print(f"DEVOPSPILOT_PHASE=commit.complete sha={commit_sha}")
+        if review_result is not None:
+            review_result = replace(review_result, commit_sha=commit_sha)
 
         return ExecutionResult(
             source_branch=workspace.source_branch,

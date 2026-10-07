@@ -57,3 +57,6 @@ coverage.xml
 # Temporary evaluation / experiment artifacts
 *.png
 *.xlsx
+
+# Local canonical runtime evidence (export summaries explicitly)
+/trajectories/

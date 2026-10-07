@@ -99,6 +99,8 @@ def pipeline(payload: dict, running: bool = False) -> list[dict]:
             and verification.get("accepted") is True
             and verification.get("runtime_clean_completion") is True
             and verification.get("evidence_completeness") is True
+            else "degraded"
+            if phase == "verified" and verification.get("accepted") is True
             else "blocked"
             if ci.get("conclusion") in {"failure", "cancelled"} or phase == "rejected"
             else "running"
@@ -197,6 +199,13 @@ class ConsoleService:
                     "delivery_id": row["delivery_id"],
                     "version": row["version"],
                     "phase": payload.get("phase"),
+                    "display_status": "degraded"
+                    if payload.get("phase") == "verified"
+                    and (payload.get("verification") or {}).get(
+                        "runtime_clean_completion"
+                    )
+                    is not True
+                    else payload.get("phase"),
                     "repository": repo.get("full_name", ""),
                     "provider": repo.get("provider_id", ""),
                     "task_id": work.get("item_id", ""),

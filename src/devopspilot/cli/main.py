@@ -545,6 +545,8 @@ async def run_cli(args: argparse.Namespace) -> int:
         # required checks, review requirement) must reach the executor/CI/
         # verifier through task.metadata — never sourced from Issue content.
         trusted_config = load_trusted_delivery_config()
+        if getattr(args, "require_live", False):
+            trusted_config["require_review"] = "true"
 
         if intent_decision.status is DecisionStatus.NEEDS_CLARIFICATION:
             # Unresolved intent: NEVER default to code change / writing.

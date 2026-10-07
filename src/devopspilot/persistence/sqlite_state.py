@@ -376,6 +376,7 @@ def _encode_state(state: DeliveryState) -> dict[str, Any]:
                     "diff_digest": state.execution.review.diff_digest,
                     "commit_sha": state.execution.review.commit_sha,
                     "summary": state.execution.review.summary,
+                    "created_at": state.execution.review.created_at,
                     "findings": [
                         {
                             "path": f.path,
@@ -476,6 +477,7 @@ def _decode_state(payload: dict[str, Any]) -> DeliveryState:
                 commit_sha=rev_data.get("commit_sha", ""),
                 findings=findings,
                 summary=rev_data.get("summary", ""),
+                created_at=rev_data.get("created_at", ""),
                 metadata=rev_data.get("metadata", {}),
             )
         exec_kwargs["review"] = review_obj
