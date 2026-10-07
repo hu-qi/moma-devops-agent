@@ -31,3 +31,21 @@
 **Success Criteria**: 第二人复现；官方要求映射齐全，未核实事项透明。
 **Tests**: 离线回放、展示页真实数据、安装和链接检查。
 **Status**: Not Complete（现有产物主要是脚本、大纲与分镜；正式 PPT/PDF、视频、技术方案书、完整提交包和已核实官方规则尚缺；执行 R19–R29）
+
+## Web Stage 1: 真实数据与执行契约
+**Goal**: 修正 SQLite 状态读取、配置加载、凭据脱敏与严格 Live 入口。
+**Success Criteria**: 真实状态可查询；缺少凭据或 API 失败不回退假数据。
+**Tests**: canonical SQLite、pending/rejected、脱敏和 Live 失败回归。
+**Status**: Complete
+
+## Web Stage 2: 项目工作台与完整交互
+**Goal**: 项目/需求/流水线/Agent/轨迹/规则/知识/运行时页面与后台执行。
+**Success Criteria**: 查询、筛选、详情、提交、恢复、下载报告均有真实 API；刷新不丢任务。
+**Tests**: API 行为、重复启动、任务失败、浏览器交互。
+**Status**: Complete
+
+## Web Stage 3: 当前代码验收与交付
+**Goal**: 本地测试、真实远端查询和 Web 验收，提供运行指南与证据。
+**Success Criteria**: 测试通过；实际 API 和浏览器结果可追溯；未完成 Live 明确记录。
+**Tests**: 全量 tests、HTTP smoke、远端只读同步、浏览器截图。
+**Status**: In Progress

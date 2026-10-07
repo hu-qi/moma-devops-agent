@@ -80,6 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["inquiry", "code_change"],
         help="Explicit intent override (inquiry = direct issue comment Q&A, code_change = branch + PR)",
     )
+    start_p.add_argument("--require-live", action="store_true", help="Refuse offline references and simulated execution")
     start_p.add_argument("--db", default=".devopspilot/state.db", help="Path to state database")
 
     # 2. status
@@ -91,6 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
     # 3. resume
     resume_p = subparsers.add_parser("resume", help="Resume delivery from last checkpoint")
     resume_p.add_argument("--delivery-id", required=True, help="Delivery ID to resume")
+    resume_p.add_argument("--require-live", action="store_true", help="Require a real provider and MoMA credentials")
     resume_p.add_argument("--db", default=".devopspilot/state.db", help="Path to state database")
 
     # 4. report
@@ -112,7 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve_p = subparsers.add_parser("serve", help="Launch the DevOpsPilot Web Management Dashboard")
     serve_p.add_argument("--host", default="127.0.0.1", help="Host interface to bind (default: 127.0.0.1)")
     serve_p.add_argument("--port", type=int, default=8080, help="Port to listen on (default: 8080)")
-    serve_p.add_argument("--db", default=".devopspilot/state.db", help="Path to state database")
+    serve_p.add_argument("--db", default=None, help="Path to state database")
 
     return parser
 
@@ -393,6 +395,13 @@ async def run_cli(args: argparse.Namespace) -> int:
         from devopspilot.cli.assembly import AppConfig, assemble_live_orchestrator, setup_model_environment
         has_model = setup_model_environment()
 
+        if getattr(args, "require_live", False) and (
+            provider not in {"atomgit", "github"} or not has_model
+            or not os.environ.get("GITHUB_TOKEN" if provider == "github" else "ATOMGIT_TOKEN")
+        ):
+            print("Strict Live resume requires configured SCM and MoMA", file=sys.stderr)
+            return 1
+
         if provider in {"atomgit", "github"} and has_model:
             config = AppConfig(
                 db_path=db_path,
@@ -416,6 +425,11 @@ async def run_cli(args: argparse.Namespace) -> int:
         deliv_id = args.delivery_id or f"deliv-{uuid.uuid4().hex[:8]}"
         provider, repo = resolve_provider_and_repo(getattr(args, "provider", None), args.repo)
         target_br = getattr(args, "target", None) or "main"
+        if getattr(args, "require_live", False):
+            token_var = {"github": "GITHUB_TOKEN", "atomgit": "ATOMGIT_TOKEN"}.get(provider)
+            if not token_var or not os.environ.get(token_var) or not os.environ.get("MOMA_API_KEY"):
+                print("Strict Live requires supported SCM credentials and MOMA_API_KEY", file=sys.stderr)
+                return 1
         print(f"Delivery initialized: id={deliv_id} provider={provider} repo={repo} issue={args.issue} mode={args.mode}")
 
         from devopspilot.contracts.delivery import (
@@ -464,6 +478,9 @@ async def run_cli(args: argparse.Namespace) -> int:
                     real_issue_fetched = True
                     print(f"[1/5] Real AtomGit API: Issue #{args.issue} resolved -> '{live_item.title}' (State: {live_item.state})")
                 except Exception as exc:
+                    if getattr(args, "require_live", False):
+                        print(f"Strict Live AtomGit fetch failed: {exc}", file=sys.stderr)
+                        return 1
                     print(f"[1/5] AtomGit API Warning: Could not fetch Issue #{args.issue} live ({exc}). Using offline reference.")
             else:
                 print(f"[1/5] AtomGit API: No ATOMGIT_TOKEN provided. Operating in offline/mock reference mode.")
@@ -495,6 +512,10 @@ async def run_cli(args: argparse.Namespace) -> int:
                 print(f"[1/5] GitHub API: No GITHUB_TOKEN provided. Operating in offline reference mode.")
         else:
             print(f"[1/5] Work item resolved: #{args.issue} - '{work_item.title}'")
+
+        if getattr(args, "require_live", False) and not real_issue_fetched:
+            print("Strict Live requires a real SCM work item", file=sys.stderr)
+            return 1
 
         # Step 2: Planning & Intent Classification (structured decision, policy v2)
         from devopspilot.routing.intent import (
@@ -683,6 +704,10 @@ async def run_cli(args: argparse.Namespace) -> int:
                     print(f"To retry inquiry: devopspilot resume --delivery-id {deliv_id}")
                     print(f"To inspect state: devopspilot status --delivery-id {deliv_id}")
                     return 1
+
+            if getattr(args, "require_live", False) and not trusted_config.get("test_command"):
+                print("Strict Live code change requires DEVOPSPILOT_TEST_COMMAND", file=sys.stderr)
+                return 1
 
             # 2.2 Branch for Code Change: Real LLM coding & end-to-end execution path on MoMA platform!
             print(f"[3/5] AI Coding: Invoking OpenJiuwen AgentTeam via MoMA platform ({os.environ.get('MOMA_API_BASE')})...")

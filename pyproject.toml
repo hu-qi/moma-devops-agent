@@ -52,3 +52,6 @@ python_files = ["test_*.py"]
 # `runner.py validate-fixtures`; they must not be collected as product tests.
 norecursedirs = ["benchmarks/cases/*/fixture", ".*", "build", "dist"]
 asyncio_mode = "strict"
+
+[tool.setuptools.package-data]
+"devopspilot.web" = ["*.html"]

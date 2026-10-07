@@ -23,7 +23,9 @@ def dashboard_server(tmp_path: Path):
         db_path=db_file,
         html_provider=get_dashboard_ui_html,
     )
-    register_dashboard_apis(server.api_router, db_path=db_file, trajectory_dir=tmp_path / "trajectories")
+    register_dashboard_apis(
+        server.api_router, db_path=db_file, trajectory_dir=tmp_path / "trajectories"
+    )
     server.start_background()
     yield server
     server.stop()
@@ -50,7 +52,7 @@ def test_api_status_endpoint(dashboard_server):
     with urllib.request.urlopen(url, timeout=5) as resp:
         assert resp.status == 200
         assert "application/json" in resp.headers.get("Content-Type", "")
-        assert resp.headers.get("Access-Control-Allow-Origin") == "*"
+        assert resp.headers.get("Access-Control-Allow-Origin") is None
         data = json.loads(resp.read().decode("utf-8"))
         assert data["status"] == "OPERATIONAL"
         assert "python_version" in data
@@ -78,7 +80,10 @@ def test_api_rules_endpoint(dashboard_server):
         data = json.loads(resp.read().decode("utf-8"))
         assert data["total_packs"] >= 2
         pack_ids = [p["pack_id"] for p in data["packs"]]
-        assert "devopspilot-industry-finance" in pack_ids or "devopspilot-industry-government" in pack_ids
+        assert (
+            "devopspilot-industry-finance" in pack_ids
+            or "devopspilot-industry-government" in pack_ids
+        )
 
 
 def test_api_benchmarks_endpoint(dashboard_server):
@@ -131,3 +136,55 @@ def test_api_trajectory_path_traversal_blocked(dashboard_server):
         urllib.request.urlopen(url, timeout=5)
     assert exc_info.value.code == 404
 
+
+def test_cross_origin_delivery_write_rejected(dashboard_server):
+    port = dashboard_server.server_address[1]
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/deliveries",
+        data=b"{}",
+        headers={
+            "Content-Type": "application/json",
+            "Origin": "https://untrusted.example",
+        },
+        method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=5)
+    assert exc.value.code == 403
+
+
+def test_json_array_is_rejected(dashboard_server):
+    port = dashboard_server.server_address[1]
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/deliveries",
+        data=b"[]",
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=5)
+    assert exc.value.code == 400
+
+
+@pytest.mark.parametrize(
+    "endpoint", ["projects", "runtime", "jobs", "schedules", "knowledge", "chat"]
+)
+def test_console_navigation_api_available(dashboard_server, endpoint):
+    port = dashboard_server.server_address[1]
+    with urllib.request.urlopen(
+        f"http://127.0.0.1:{port}/api/{endpoint}", timeout=5
+    ) as resp:
+        assert isinstance(json.loads(resp.read()), dict)
+
+
+def test_cancel_missing_worker_is_validation_error(dashboard_server):
+    port = dashboard_server.server_address[1]
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/jobs/cancel",
+        data=b'{"job_id":"missing"}',
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=5)
+    assert exc.value.code == 400

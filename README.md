@@ -138,6 +138,9 @@ devopspilot demo --mode live
 ```
 
 ### 5. 启动后台管理 Web 控制台 (`serve`)
+
+完整交互、真实数据源、操作员交付配置和验收方法见 [Web 工作台指南](docs/setup/web-console.md)。
+
 DevOpsPilot 提供零外部依赖的原生 Web 管理控制台，用于实时观测交付指标、检查行业合规规则、回放执行轨迹与交互式运行评测：
 ```bash
 # 使用统一 CLI 启动控制台（默认 http://127.0.0.1:8080）

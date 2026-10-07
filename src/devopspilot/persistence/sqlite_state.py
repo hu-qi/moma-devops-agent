@@ -117,7 +117,16 @@ class SQLiteDeliveryStateStore:
                     "INSERT INTO delivery_intents("
                     "deduplication_key, delivery_id, lease_owner, lease_token, lease_expires_at, status, created_at, updated_at"
                     ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (deduplication_key, delivery_id, owner, token, expires_at, IntentStatus.ACQUIRED.value, now, now),
+                    (
+                        deduplication_key,
+                        delivery_id,
+                        owner,
+                        token,
+                        expires_at,
+                        IntentStatus.ACQUIRED.value,
+                        now,
+                        now,
+                    ),
                 )
                 return LeaseAcquireResult(
                     acquired=True,
@@ -149,7 +158,8 @@ class SQLiteDeliveryStateStore:
 
             # If task already completed or already has a persisted delivery state
             if existing_status == IntentStatus.COMPLETED.value or (
-                existing_state is not None and existing_state.state.phase not in {DeliveryPhase.RECEIVED}
+                existing_state is not None
+                and existing_state.state.phase not in {DeliveryPhase.RECEIVED}
             ):
                 return LeaseAcquireResult(
                     acquired=False,
@@ -160,12 +170,22 @@ class SQLiteDeliveryStateStore:
                 )
 
             # Check if lease expired (can be taken over)
-            if now >= existing_expires and existing_status != IntentStatus.COMPLETED.value:
+            if (
+                now >= existing_expires
+                and existing_status != IntentStatus.COMPLETED.value
+            ):
                 db.execute(
                     "UPDATE delivery_intents SET "
                     "lease_owner = ?, lease_token = ?, lease_expires_at = ?, status = ?, updated_at = ? "
                     "WHERE deduplication_key = ?",
-                    (owner, token, expires_at, IntentStatus.ACQUIRED.value, now, deduplication_key),
+                    (
+                        owner,
+                        token,
+                        expires_at,
+                        IntentStatus.ACQUIRED.value,
+                        now,
+                        deduplication_key,
+                    ),
                 )
                 return LeaseAcquireResult(
                     acquired=True,
@@ -190,7 +210,9 @@ class SQLiteDeliveryStateStore:
         deduplication_key: str,
         lease_token: str,
     ) -> None:
-        await asyncio.to_thread(self._release_lease_sync, deduplication_key, lease_token)
+        await asyncio.to_thread(
+            self._release_lease_sync, deduplication_key, lease_token
+        )
 
     def _release_lease_sync(self, deduplication_key: str, lease_token: str) -> None:
         now = time.time()
@@ -200,7 +222,13 @@ class SQLiteDeliveryStateStore:
                 "UPDATE delivery_intents SET "
                 "status = ?, updated_at = ? "
                 "WHERE deduplication_key = ? AND lease_token = ? AND status != ?",
-                (IntentStatus.FAILED.value, now, deduplication_key, lease_token, IntentStatus.COMPLETED.value),
+                (
+                    IntentStatus.FAILED.value,
+                    now,
+                    deduplication_key,
+                    lease_token,
+                    IntentStatus.COMPLETED.value,
+                ),
             )
 
     async def complete_intent(
@@ -208,7 +236,9 @@ class SQLiteDeliveryStateStore:
         deduplication_key: str,
         delivery_id: str,
     ) -> None:
-        await asyncio.to_thread(self._complete_intent_sync, deduplication_key, delivery_id)
+        await asyncio.to_thread(
+            self._complete_intent_sync, deduplication_key, delivery_id
+        )
 
     def _complete_intent_sync(self, deduplication_key: str, delivery_id: str) -> None:
         now = time.time()
@@ -399,6 +429,12 @@ def _encode_state(state: DeliveryState) -> dict[str, Any]:
             "accepted": state.verification.accepted,
             "summary": state.verification.summary,
             "evidence": list(state.verification.evidence),
+            "outcome_status": str(state.verification.outcome_status),
+            "task_success": state.verification.task_success,
+            "runtime_clean_completion": state.verification.runtime_clean_completion,
+            "evidence_completeness": state.verification.evidence_completeness,
+            "degradation_reason": state.verification.degradation_reason,
+            "escalation_path": state.verification.escalation_path,
         }
     return payload
 
@@ -432,9 +468,7 @@ def _decode_state(payload: dict[str, Any]) -> DeliveryState:
         rev_data = exec_kwargs.get("review")
         review_obj = None
         if rev_data is not None:
-            findings = tuple(
-                ReviewFinding(**f) for f in rev_data.get("findings", [])
-            )
+            findings = tuple(ReviewFinding(**f) for f in rev_data.get("findings", []))
             review_obj = ReviewResult(
                 reviewer_id=rev_data["reviewer_id"],
                 verdict=ReviewVerdict(rev_data["verdict"]),
@@ -458,9 +492,7 @@ def _decode_state(payload: dict[str, Any]) -> DeliveryState:
 
     run_data = payload.get("ci_run")
     ci_run = (
-        CIRunRef(repository=repository, **run_data)
-        if run_data is not None
-        else None
+        CIRunRef(repository=repository, **run_data) if run_data is not None else None
     )
 
     ci_logs = tuple(
@@ -475,6 +507,14 @@ def _decode_state(payload: dict[str, Any]) -> DeliveryState:
             accepted=verification_data["accepted"],
             summary=verification_data["summary"],
             evidence=tuple(verification_data.get("evidence", [])),
+            outcome_status=verification_data.get("outcome_status", "verified_clean"),
+            task_success=verification_data.get("task_success", True),
+            runtime_clean_completion=verification_data.get(
+                "runtime_clean_completion", True
+            ),
+            evidence_completeness=verification_data.get("evidence_completeness", True),
+            degradation_reason=verification_data.get("degradation_reason", ""),
+            escalation_path=verification_data.get("escalation_path", ""),
         )
         if verification_data is not None
         else None
