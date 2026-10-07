@@ -1,0 +1,19 @@
+{
+  "source_sha": "7076541e445a9f2da365b52fce74cf6df3c4ff17",
+  "ppt_slides": 12,
+  "proposal_pages": 8,
+  "pdf_visual_review": "all pages reviewed; two deck layout fixes rechecked",
+  "video_duration_seconds": 189.35,
+  "video": "1920x1080 H264 AAC mov_text; evidence montage with synthetic Chinese narration",
+  "fixture_validation": "24 passed, 0 failed",
+  "offline_regression": "41 passed (existing archived component test evidence)",
+  "sensitive_scan": {
+    "files_and_archive_members_scanned": 537,
+    "credential_value_matches": 0,
+    "forbidden_private_files": 0
+  },
+  "fresh_full_live_rerun": false,
+  "complete_ablation_results": false,
+  "independent_reproduction": false,
+  "official_uploaded": false
+}

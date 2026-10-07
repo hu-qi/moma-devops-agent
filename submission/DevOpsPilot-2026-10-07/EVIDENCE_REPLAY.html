@@ -1,0 +1,44 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>DevOpsPilot 真实证据回放</title><style>body{font:18px system-ui;max-width:1100px;margin:40px auto;padding:20px;background:#f4f6fa;color:#16243a}h1{font-size:36px}img{max-width:100%;border:1px solid #ccd}pre{white-space:pre-wrap;word-break:break-all;background:white;padding:20px}a{color:#185abc}</style><h1>DevOpsPilot 真实证据回放</h1><p>CodeArts · 2026模型应用赛 · 2026-10-07</p><p>本页回放已有真实运行与页面截图，不触发新的模型或SCM调用。运行降级、发布后补审和完整Live待重跑边界均保留。</p><p><a href="https://github.com/hu-qi/moma-devops-agent/pull/8">真实PR #8</a> · <a href="https://github.com/hu-qi/moma-devops-agent/actions/runs/37601566835">真实CI</a></p><h2>持久化流水线</h2><img alt="真实页面截图" src="assets/pipeline.png"><h2>项目接入</h2><img alt="真实页面截图" src="assets/projects.png"><h2>需求中心</h2><img alt="真实页面截图" src="assets/issues.png"><h2>题库</h2><img alt="真实页面截图" src="assets/bench.png"><h2>运行时与模型</h2><img alt="真实页面截图" src="assets/runtime.png"><h2>行业规则</h2><img alt="真实页面截图" src="assets/skills.png"><h2>真实交付JSON</h2><pre>{
+  &quot;provider&quot;: &quot;github&quot;,
+  &quot;repo&quot;: &quot;hu-qi/moma-devops-agent&quot;,
+  &quot;issue&quot;: &quot;7&quot;,
+  &quot;issue_url&quot;: &quot;https://github.com/hu-qi/moma-devops-agent/issues/7&quot;,
+  &quot;kind&quot;: &quot;current_code_controlled_live_fixture&quot;,
+  &quot;merged&quot;: false,
+  &quot;delivery_id&quot;: &quot;web-d7f99e8a6461&quot;,
+  &quot;commit_sha&quot;: &quot;105d74d7fe03f33163dde036ce1d4abba960a3c7&quot;,
+  &quot;pr_url&quot;: &quot;https://github.com/hu-qi/moma-devops-agent/pull/8&quot;,
+  &quot;independent_review&quot;: {
+    &quot;verdict&quot;: &quot;approved&quot;,
+    &quot;model&quot;: &quot;deepseek-v4.1-flash&quot;,
+    &quot;diff_digest&quot;: &quot;ceebbaf775d5cdab6fb0946437d962569f35d40bc26c0e92e27ab3ab5cedc26d&quot;,
+    &quot;created_at&quot;: &quot;2026-10-07T09:37:11.229018+00:00&quot;,
+    &quot;audit_timing&quot;: &quot;post_publication&quot;,
+    &quot;summary&quot;: &quot;The change adds a small status_metadata helper and a matching assertion in the fixture test. The independent test run exited 0, and no correctness or security issues were found. The only minor issue is the missing newline at end of app.py.&quot;
+  },
+  &quot;runtime_degraded&quot;: true,
+  &quot;implementation_sha&quot;: &quot;8330415&quot;,
+  &quot;phase&quot;: &quot;verified&quot;,
+  &quot;verification&quot;: {
+    &quot;accepted&quot;: true,
+    &quot;summary&quot;: &quot;Delivery accepted with runtime degradation: agentteam_timeout. Task succeeded and evidence is complete, but runtime encountered non-fatal degradation.&quot;,
+    &quot;evidence&quot;: [
+      &quot;review:approved&quot;,
+      &quot;diff_digest:ceebbaf775d5cdab6fb0946437d962569f35d40bc26c0e92e27ab3ab5cedc26d&quot;,
+      &quot;ci_run:37601566835&quot;,
+      &quot;commit:105d74d7fe03f33163dde036ce1d4abba960a3c7&quot;,
+      &quot;trajectory:5d7a1d6177c8cd4c68341e835ed70e8b&quot;,
+      &quot;trajectory_disk:5d7a1d6177c8cd4c68341e835ed70e8b.json&quot;
+    ],
+    &quot;outcome_status&quot;: &quot;verified_degraded&quot;,
+    &quot;task_success&quot;: true,
+    &quot;runtime_clean_completion&quot;: false,
+    &quot;evidence_completeness&quot;: true,
+    &quot;degradation_reason&quot;: &quot;agentteam_timeout&quot;,
+    &quot;escalation_path&quot;: &quot;human_review_recommended:check_runtime_logs_and_timeout_margins&quot;
+  },
+  &quot;ci_run_url&quot;: &quot;https://github.com/hu-qi/moma-devops-agent/actions/runs/37601566835&quot;,
+  &quot;ci_commit_sha&quot;: &quot;105d74d7fe03f33163dde036ce1d4abba960a3c7&quot;,
+  &quot;ci_conclusion&quot;: &quot;success&quot;,
+  &quot;prepublication_review_live_retest&quot;: false
+}</pre></html>

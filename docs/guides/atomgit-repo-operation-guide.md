@@ -23,7 +23,7 @@
 - **组织/所有者**：`huqi`
 - **仓库名称**：`DevOpsPilot-Test`
 - **默认主分支**：`main`
-- **个人访问令牌 (Token)**：确保具备 `repo`、`issues`、`pull_requests` 权限的 AtomGit Access Token（例如 `PT43FrQdtUb3E3M9r3Jx-xCa`）。
+- **个人访问令牌 (Token)**：确保具备 `repo`、`issues`、`pull_requests` 权限的 AtomGit Access Token（例如 `REDACTED_CREDENTIAL`）。
 
 ---
 
@@ -41,7 +41,7 @@ cp .env.example .env
 
 # 3. 编辑 .env 文件，填入 AtomGit 访问凭据
 # 在 .env 中确保包含以下行：
-ATOMGIT_TOKEN="PT43FrQdtUb3E3M9r3Jx-xCa"
+ATOMGIT_TOKEN="REDACTED_CREDENTIAL"
 ```
 
 > **提示**：配置写入 `.env` 后，每次运行 CLI 会自动生效，无需在 Shell 中重复运行 `export ATOMGIT_TOKEN=...`。
@@ -64,7 +64,7 @@ DevOpsPilot 以需求（Issue）为生命周期起点。您可以通过以下两
 ### 方式 B：终端 API 一键创建
 ```bash
 curl -s -X POST "https://api.atomgit.com/repos/huqi/DevOpsPilot-Test/issues" \
-  -H "Authorization: Bearer PT43FrQdtUb3E3M9r3Jx-xCa" \
+  -H "Authorization: Bearer REDACTED_CREDENTIAL" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "feat: add email format validation function",

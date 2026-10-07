@@ -1,5 +1,7 @@
 # DevOpsPilot
 
+2026-10-07参赛正式材料见 [完整交付目录](submission/DevOpsPilot-2026-10-07/README.md) 与 [RoadMap](docs/competition/ROADMAP.md)。最新证据与未完成边界以该目录评估报告为准。
+
 > **MoMA 驱动的自进化多智能体研发交付系统 (Autonomous DevOps Agent)**
 
 DevOpsPilot 是面向政务、金融、工业等高确定性与高合规要求行业的软件研发智能底座。它以移动云 MoMA 作为 MaaS 与多模型调度底座，融合动态 AgentTeam、行业工程合规包（Industry Engineering Packs）、真实离线评测集（DevOpsBench）与受控自进化闭环（Self-Evolving / RSI），实现从需求识别、代码实现、测试审查、CI/CD 修复到知识资产沉淀的自主研发交付。

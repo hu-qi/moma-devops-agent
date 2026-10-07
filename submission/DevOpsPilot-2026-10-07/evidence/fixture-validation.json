@@ -1,0 +1,216 @@
+{
+  "mode": "validate-fixtures",
+  "total": 24,
+  "passed": 24,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "ci.python.env_variable_mismatch.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0592,
+      "stdout": "",
+      "stderr": "CI failed: expected port 8080, got 0\n"
+    },
+    {
+      "case_id": "ci.python.import_cycle.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0459,
+      "stdout": "",
+      "stderr": "CI Verify Failed: cannot import name 'VALUE_A' from 'a' (consider renaming '/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/ci-python-import-cycle/fixture/a.py' if it has the same name as a library you intended to import)\n"
+    },
+    {
+      "case_id": "ci.python.missing_dependency.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0293,
+      "stdout": "",
+      "stderr": "CI Verify Failed: Required acceleration module missing\n"
+    },
+    {
+      "case_id": "ci.python.permission_error.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0425,
+      "stdout": "",
+      "stderr": "CI Verify Failed: [Errno 2] No such file or directory: '/readonly/report.txt'\n"
+    },
+    {
+      "case_id": "ci.python.syntax_error.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0243,
+      "stdout": "",
+      "stderr": "CI Verify Failed: expected ':' (app.py, line 2)\n"
+    },
+    {
+      "case_id": "ci.python.test_fixture_missing.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.052,
+      "stdout": "",
+      "stderr": "CI Verify Failed: test_app.py failed (exit 1): TESTS FAILED: [Errno 2] No such file or directory: 'data.json'\n"
+    },
+    {
+      "case_id": "ci.python.wrong_python_version.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0237,
+      "stdout": "",
+      "stderr": "CI Verify Failed: app.py line 4: walrus operator (:=) is not supported in target Python 3.7\n"
+    },
+    {
+      "case_id": "ci.github_actions.working_directory.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0219,
+      "stdout": "",
+      "stderr": "CI workflow must run commands from the service directory\n"
+    },
+    {
+      "case_id": "coding.python.binary_search.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.035,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-binary-search/fixture/test_binary_search.py\", line 15, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-binary-search/fixture/test_binary_search.py\", line 8, in main\n    assert search(arr, 9) == 4      # last element — boundary bug hits here\n           ^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "case_id": "coding.python.calculator.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.6391,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0\nrootdir: /Users/huqi/Develop/todo/test/moma-devops-agent\nconfigfile: pyproject.toml\nplugins: anyio-4.14.0, langsmith-0.9.5, asyncio-1.4.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 3 items\n\ntest_calculator.py ..F                                                   [100%]\n\n=================================== FAILURES ===================================\n_____________________________ test_divide_by_zero ______________________________\n\n    def test_divide_by_zero():\n        # Expect safe fallback or ValueError, ZeroDivisionError will fail this assertion\n        with pytest.raises(ValueError):\n>           divide(10.0, 0.0)\n\ntest_calculator.py:16: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\na = 10.0, b = 0.0\n\n    def divide(a: float, b: float) -> float:\n        # Defect: directly divides without zero checking\n>       return a / b\n               ^^^^^\nE       ZeroDivisionError: division by zero\n\ncalculator.py:3: ZeroDivisionError\n=========================== short test summary info ============================\nFAILED test_calculator.py::test_divide_by_zero - ZeroDivisionError: division ...\n========================= 1 failed, 2 passed in 0.02s ==========================\n",
+      "stderr": ""
+    },
+    {
+      "case_id": "coding.python.date_parser.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0314,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-date-parser/fixture/test_date_parser.py\", line 19, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-date-parser/fixture/test_date_parser.py\", line 7, in main\n    assert parse_date(\"2024-03-15\") == (2024, 3, 15)\n           ~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-date-parser/fixture/date_parser.py\", line 18, in parse_date\n    raise ValueError(f\"Invalid date format: {date_str!r}\")\nValueError: Invalid date format: '2024-03-15'\n"
+    },
+    {
+      "case_id": "coding.python.fibonacci.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0322,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-fibonacci/fixture/test_fibonacci.py\", line 13, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-fibonacci/fixture/test_fibonacci.py\", line 6, in main\n    assert fib(1) == 1\n           ^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "case_id": "coding.python.json_parser.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.3662,
+      "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0\nrootdir: /Users/huqi/Develop/todo/test/moma-devops-agent\nconfigfile: pyproject.toml\nplugins: anyio-4.14.0, langsmith-0.9.5, asyncio-1.4.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 2 items\n\ntest_parser.py .F                                                        [100%]\n\n=================================== FAILURES ===================================\n_________________________ test_extract_missing_default _________________________\n\n    def test_extract_missing_default():\n        data = {\"a\": {}}\n        # Unfixed code raises KeyError, fixed code should return \"fallback\"\n>       assert extract_nested_value(data, \"a.b.missing\", default=\"fallback\") == \"fallback\"\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\ntest_parser.py:13: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\ndata = {'a': {}}, path = 'a.b.missing', default = 'fallback'\n\n    def extract_nested_value(data: dict[str, Any], path: str, default: Any = None) -> Any:\n        # Defect: throws KeyError when key is missing instead of returning default\n        current = data\n        for part in path.split(\".\"):\n>           current = current[part]\n                      ^^^^^^^^^^^^^\nE           KeyError: 'b'\n\nparser.py:8: KeyError\n=========================== short test summary info ============================\nFAILED test_parser.py::test_extract_missing_default - KeyError: 'b'\n========================= 1 failed, 1 passed in 0.02s ==========================\n",
+      "stderr": ""
+    },
+    {
+      "case_id": "coding.python.list_flatten.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.0314,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-list-flatten/fixture/test_flatten.py\", line 14, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-list-flatten/fixture/test_flatten.py\", line 8, in main\n    assert flatten([1, [2, [3, 4], 5]]) == [1, 2, 3, 4, 5]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "case_id": "coding.python.off_by_one.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.031,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-off-by-one/fixture/test_range_sum.py\", line 12, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-off-by-one/fixture/test_range_sum.py\", line 6, in main\n    assert sum_to(1) == 1\n           ^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "case_id": "coding.python.string_reverse.001",
+      "status": "pass",
+      "precondition_type": "command-exit",
+      "expected_exit_code": 1,
+      "exit_code": 1,
+      "elapsed_seconds": 0.03,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-string-reverse/fixture/test_string_utils.py\", line 13, in <module>\n    main()\n    ~~~~^^\n  File \"/Users/huqi/Develop/todo/test/moma-devops-agent/benchmarks/cases/coding-python-string-reverse/fixture/test_string_utils.py\", line 5, in main\n    assert reverse_words(\"hello world\") == \"world hello\"\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "case_id": "review.python.clean_refactor.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.exception_swallow.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.hardcoded_secret.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.insecure_hash.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.path_traversal.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.race_condition.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.sql_injection.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    },
+    {
+      "case_id": "review.python.unmasked_pii.001",
+      "status": "pass",
+      "precondition_type": "file-contains",
+      "missing_markers": []
+    }
+  ]
+}

@@ -60,3 +60,7 @@ coverage.xml
 
 # Local canonical runtime evidence (export summaries explicitly)
 /trajectories/
+
+# Private submission build caches
+/.submission-build/
+!submission/**/assets/*.png

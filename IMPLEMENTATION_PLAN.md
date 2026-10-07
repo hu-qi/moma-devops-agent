@@ -24,13 +24,13 @@
 **Goal**: 完成 C20–C25，20–30 例可复算评测和真实候选。
 **Success Criteria**: 原始数据与收益可复算，候选保持人工审批边界。
 **Tests**: oracle 正反例、指标重算、负收益拒绝、回滚。
-**Status**: Not Complete（仅 9 个合成案例，无 holdout、完整 A0–A3 原始 JSONL 和可复算正式报告；当前 A/B 为双方失败后 rejected；执行 R13–R18）
+**Status**: Not Complete（已扩展为24个fixture案例、6个holdout；fixture验证24/24通过，尚缺、完整 A0–A3 原始 JSONL 和可复算正式报告；当前 A/B 为双方失败后 rejected；执行 R13–R18）
 
 ## Stage 5: 比赛材料
 **Goal**: 完成 C26–C31，展示、回放、文档及可审核提交包。
 **Success Criteria**: 第二人复现；官方要求映射齐全，未核实事项透明。
 **Tests**: 离线回放、展示页真实数据、安装和链接检查。
-**Status**: Not Complete（现有产物主要是脚本、大纲与分镜；正式 PPT/PDF、视频、技术方案书、完整提交包和已核实官方规则尚缺；执行 R19–R29）
+**Status**: Materials Complete / Acceptance Pending（正式材料已生成，见 submission/DevOpsPilot-2026-10-07；第二人独立复现和官网提交尚未完成）
 
 ## Web Stage 1: 真实数据与执行契约
 **Goal**: 修正 SQLite 状态读取、配置加载、凭据脱敏与严格 Live 入口。
@@ -50,3 +50,27 @@
 **Tests**: 全量 tests、HTTP smoke、远端只读同步、浏览器截图。
 **Status**: Complete
 **Evidence**: 全量离线回归 41/41；真实 Issue #7 → PR #8 → 当前提交 CI 成功；MoMA 实际审查/问答与浏览器交互已验收。AgentTeam 超时与原运行发布后补审明确保留，修复后发布前审查的完整 Live 重跑未完成。
+
+## Submission Stage 1: 规则与内容冻结
+**Goal**: 官方要求核验、当前代码证据和产品 RoadMap。
+**Success Criteria**: 事实与计划分开；未知要求明确列出；全部数字有来源。
+**Tests**: 源码 SHA、证据 JSON、规则来源核对。
+**Status**: Complete
+
+## Submission Stage 2: 正式文档与答辩材料
+**Goal**: 技术方案 DOCX/PDF、答辩 PPTX/PDF、评测报告和复现指南。
+**Success Criteria**: 实际文件存在，页面清晰，声明与证据一致。
+**Tests**: 全页渲染、文字与链接核对、可编辑性检查。
+**Status**: Complete
+
+## Submission Stage 3: 演示视频与可携带证据
+**Goal**: 真实页面证据回放 MP4、讲稿、字幕和脱敏归档。
+**Success Criteria**: 视频可播放，有旁白字幕，清楚标注回放和未完成边界。
+**Tests**: ffprobe、音视频时长、帧抽样和凭据扫描。
+**Status**: Complete
+
+## Submission Stage 4: 打包与交付检查
+**Goal**: 源码包、提交目录、SHA256 清单、最终 ZIP 和交付报告。
+**Success Criteria**: 文件完整、校验通过、无凭据和本地运行垃圾；官网提交待用户确认。
+**Tests**: 清单校验、ZIP 解压、源代码回归、敏感信息检查。
+**Status**: Complete（材料完整性与敏感值扫描通过；官网上传及队长私密命名待完成）
