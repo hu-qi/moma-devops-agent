@@ -85,3 +85,18 @@ PYTHONPATH=src DEVOPSPILOT_NO_DOTENV=1 .venv/bin/python scripts/run_offline_chec
 `scripts/prepare_web_acceptance_issue.py`。其目标是配置的 GitHub 仓库，
 只有两份 fixture 文件可修改，结果 PR 保持未合并。
 该工具会真正创建 Issue，不能作为默认安装步骤或离线自测运行。
+
+## 本次真实交付验收
+
+2026-10-07 已通过 Web 启动 GitHub Issue #7，产生未合并 PR #8，
+交付提交为 `105d74d7fe03f33163dde036ce1d4abba960a3c7`。
+GitHub Actions run `37601566835` 在该提交上成功，独立 fixture 测试退出码为 0。
+链接、实际审查模型和摘要见 `docs/evidence/web-console-delivery.json`。
+
+这一运行的 OpenJiuwen AgentTeam 在产生有效代码后未干净终止，达到超时边界；
+页面明确展示“验收通过 · 运行降级”。原运行遗漏发布前审查，随后进行了真实
+MoMA 只读审查，并标明 `audit_timing=post_publication`，不能据此声称原运行
+通过了发布前门禁。当前严格 Live 启动已强制要求独立审查，模型输出无效、拒绝
+或 diff 不匹配都会阻止提交；该修复的离线验证与首次 Live 证据分别保留。
+当前固定版本的上游团队工具自动注入，尚未找到可可靠关闭任务板工具的配置，
+因此没有通过修改安装包或把超时标作成功来掩盖运行限制。

@@ -48,4 +48,5 @@
 **Goal**: 本地测试、真实远端查询和 Web 验收，提供运行指南与证据。
 **Success Criteria**: 测试通过；实际 API 和浏览器结果可追溯；未完成 Live 明确记录。
 **Tests**: 全量 tests、HTTP smoke、远端只读同步、浏览器截图。
-**Status**: In Progress
+**Status**: Complete
+**Evidence**: 全量离线回归 41/41；真实 Issue #7 → PR #8 → 当前提交 CI 成功；MoMA 实际审查/问答与浏览器交互已验收。AgentTeam 超时与原运行发布后补审明确保留，修复后发布前审查的完整 Live 重跑未完成。
