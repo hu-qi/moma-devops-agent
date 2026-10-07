@@ -1,0 +1,108 @@
+{
+  "scanner_version": "0.2.0-r22",
+  "audit_timestamp": "2026-10-03",
+  "passed": true,
+  "summary": {
+    "secret_findings_count": 0,
+    "history_findings_count": 0,
+    "synthetic_pii_fixtures_count": 8,
+    "dependencies_audited_count": 5,
+    "incompatible_licenses_count": 0
+  },
+  "critical_issues": [],
+  "synthetic_pii_fixtures": [
+    {
+      "file": "benchmarks/cases/review-python-unmasked-pii/case.json",
+      "line": 21,
+      "type": "synthetic_cn_idcard",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "benchmarks/cases/review-python-unmasked-pii/fixture/user_service.py",
+      "line": 9,
+      "type": "synthetic_cn_mobile",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "benchmarks/cases/review-python-unmasked-pii/fixture/user_service.py",
+      "line": 9,
+      "type": "synthetic_cn_idcard",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "experiments/end-to-end-integration-suite/main.py",
+      "line": 385,
+      "type": "synthetic_cn_idcard",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "experiments/industry-gate-runner-smoke/main.py",
+      "line": 84,
+      "type": "synthetic_cn_idcard",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "experiments/industry-gate-runner-smoke/main.py",
+      "line": 125,
+      "type": "synthetic_cn_mobile",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "experiments/industry-rule-engine-smoke/main.py",
+      "line": 31,
+      "type": "synthetic_cn_mobile",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    },
+    {
+      "file": "experiments/industry-rule-engine-smoke/main.py",
+      "line": 31,
+      "type": "synthetic_cn_idcard",
+      "is_synthetic_fixture": true,
+      "rationale": "Synthetic test/benchmark case fixture"
+    }
+  ],
+  "dependency_licenses": [
+    {
+      "package": "PyYAML",
+      "installed_version": "6.0.3",
+      "license": "MIT",
+      "source": "https://pyyaml.org/",
+      "compatible": true
+    },
+    {
+      "package": "pytest",
+      "installed_version": "9.1.1",
+      "license": "MIT",
+      "source": "Changelog, https://docs.pytest.org/en/stable/changelog.html",
+      "compatible": true
+    },
+    {
+      "package": "pytest-asyncio",
+      "installed_version": "1.4.0",
+      "license": "Apache-2.0",
+      "source": "Bug Tracker, https://github.com/pytest-dev/pytest-asyncio/issues",
+      "compatible": true
+    },
+    {
+      "package": "iniconfig",
+      "installed_version": "2.3.0",
+      "license": "MIT",
+      "source": "Homepage, https://github.com/pytest-dev/iniconfig",
+      "compatible": true
+    },
+    {
+      "package": "pluggy",
+      "installed_version": "1.6.0",
+      "license": "MIT",
+      "source": "https://pypi.org/project/pluggy",
+      "compatible": true
+    }
+  ]
+}

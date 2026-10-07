@@ -1,0 +1,50 @@
+{
+  "id": "review.python.insecure_hash.001",
+  "version": "0.1.0",
+  "category": "code-review",
+  "title": "Python insecure hash for passwords review",
+  "description": "Identify use of MD5 for password hashing and recommend a secure alternative such as bcrypt.",
+  "task": "Review password_store.py and report security findings related to password hashing. Do not modify files.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [],
+    "forbidden_paths": [],
+    "max_changed_files": 0,
+    "read_only": true
+  },
+  "precondition": {
+    "type": "file-contains",
+    "path": "password_store.py",
+    "contains": [
+      "hashlib.md5",
+      "hexdigest"
+    ]
+  },
+  "oracle": {
+    "type": "structured-review",
+    "required_findings": [
+      "insecure-hash",
+      "bcrypt"
+    ]
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "medium",
+  "industry": null,
+  "tags": [
+    "python",
+    "security",
+    "cryptography",
+    "review"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for structured code-review evaluation."
+  }
+}

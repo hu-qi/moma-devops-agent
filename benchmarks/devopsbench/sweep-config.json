@@ -1,0 +1,73 @@
+{
+  "rc_tag": "rc-2026-mobile-cloud-cup-01",
+  "rc_sha": "ddc414a60bba2b5399e08425ead373dc4ce81b49",
+  "case_version": "0.1.0",
+  "case_digest": "b2c27dbb2f175d1406ce26e81fea9dfbb7c8c9c99a8459ada396a07b81495aed",
+  "variants": {
+    "A0": {
+      "label": "Baseline single-agent, no skill",
+      "execution_mode": "single_agent",
+      "skill_enabled": false,
+      "team_enabled": false,
+      "model": {
+        "coding": "Qwen3-32B",
+        "review": "deepseek-v4.1-flash",
+        "reasoning": "GLM-5.3"
+      }
+    },
+    "A1": {
+      "label": "Single-agent with build-debug skill",
+      "execution_mode": "single_agent",
+      "skill_enabled": true,
+      "team_enabled": false,
+      "model": {
+        "coding": "Qwen3-32B",
+        "review": "deepseek-v4.1-flash",
+        "reasoning": "GLM-5.3"
+      }
+    },
+    "A2": {
+      "label": "AgentTeam, no skill",
+      "execution_mode": "agent_team",
+      "skill_enabled": false,
+      "team_enabled": true,
+      "model": {
+        "coding": "Qwen3-32B",
+        "review": "deepseek-v4.1-flash",
+        "reasoning": "GLM-5.3"
+      }
+    },
+    "A3": {
+      "label": "AgentTeam with build-debug skill (candidate)",
+      "execution_mode": "agent_team",
+      "skill_enabled": true,
+      "team_enabled": true,
+      "model": {
+        "coding": "Qwen3-32B",
+        "review": "deepseek-v4.1-flash",
+        "reasoning": "GLM-5.3"
+      }
+    }
+  },
+  "repeats_per_case": 3,
+  "budget_per_run": {
+    "timeout_seconds": "from case.json",
+    "max_model_calls": "from case.json",
+    "max_tool_calls": "from case.json",
+    "max_retries": 0,
+    "temperature": 0.0
+  },
+  "holdout_policy": {
+    "default_include_holdout": false,
+    "holdout_flag": "--include-holdout"
+  },
+  "human_intervention_rules": {
+    "allowed_during_eval": false,
+    "note": "Any human intervention invalidates that run; mark human_interventions > 0"
+  },
+  "pricing": {
+    "source": "https://ecloud.10086.cn/op-help-center/doc/article/91592",
+    "note": "Prices sourced from MoMA official page; unknown prices recorded as 'unestimated', never free",
+    "snapshot_date": "2026-09-30"
+  }
+}

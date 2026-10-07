@@ -1,0 +1,49 @@
+{
+  "id": "ci.python.permission_error.001",
+  "version": "0.1.0",
+  "category": "ci-debug",
+  "title": "Python CI build fails because app.py lacks error handling for permission denied",
+  "description": "Fix app.py to handle PermissionError when writing to a read-only path so CI passes.",
+  "task": "Add proper error handling in app.py so python verify_ci.py exits with 0.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "app.py"
+    ],
+    "forbidden_paths": [
+      "verify_ci.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python verify_ci.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python verify_ci.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 60,
+    "max_model_calls": 8,
+    "max_tool_calls": 20
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "ci",
+    "ci-debug",
+    "error-handling"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for deterministic CI debug evaluation."
+  }
+}

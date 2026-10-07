@@ -1,0 +1,49 @@
+{
+  "id": "coding.python.list_flatten.001",
+  "version": "0.1.0",
+  "category": "coding",
+  "title": "Python deep list flatten",
+  "description": "Repair a flatten function that only handles one level of nesting instead of recursively flattening arbitrarily nested lists.",
+  "task": "Fix flatten so it recursively flattens deeply nested lists.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "flatten.py"
+    ],
+    "forbidden_paths": [
+      "test_flatten.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python test_flatten.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python test_flatten.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 30,
+    "max_model_calls": 10,
+    "max_tool_calls": 30
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "recursion",
+    "lists",
+    "deterministic"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for deterministic benchmark validation."
+  }
+}

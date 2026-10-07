@@ -137,17 +137,27 @@ devopspilot demo --mode recorded
 devopspilot demo --mode live
 ```
 
+### 5. 启动后台管理 Web 控制台 (`serve`)
+DevOpsPilot 提供零外部依赖的原生 Web 管理控制台，用于实时观测交付指标、检查行业合规规则、回放执行轨迹与交互式运行评测：
+```bash
+# 使用统一 CLI 启动控制台（默认 http://127.0.0.1:8080）
+devopspilot serve
+
+# 或通过独立启动脚本直接运行
+python3 scripts/serve_dashboard.py --port 8080
+```
+
 ---
 
 ## 🧪 验证与质量保证
 
 DevOpsPilot 严格遵守“证据可复验、拒绝伪造通过”的工程准则。
 
-### 1. 全量离线回归套件 (40 Checks)
+### 1. 全量离线回归套件 (41 Checks)
 ```bash
 python3 scripts/run_offline_checks.py
 ```
-> **当前状态**：**40 passed, 0 failed**（覆盖 35 项核心 Smoke 测试、3 项度量脚本与 2 项 Fixture 生命周期校验）。
+> **当前状态**：**41 passed, 0 failed**（覆盖 35 项核心 Smoke 测试、4 项度量脚本与 2 项 Fixture 生命周期校验）。
 
 ### 2. 连续 3 次独立全流程交付验证
 ```bash

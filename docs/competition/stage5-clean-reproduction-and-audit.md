@@ -8,7 +8,7 @@
 
 ## 一、第二人独立复现操作规程 (Clean-Room Reproduction)
 
-为确保任何评审专家或第三方工程师在全新环境下均能 100% 独立复现，请按以下标准化步骤操作：
+为确保任何评审专家或第三方工程师在全新环境下均能独立复现，请按以下标准化步骤操作：
 
 ### 1. 干净环境准备
 ```bash
@@ -80,7 +80,7 @@ python3 scripts/run_offline_checks.py
 
 | 依赖组件 | 声明版本 | 开源许可证 | 使用方式 | 兼容性评估 |
 |---|---|---|---|---|
-| **Python** | `>= 3.11` | PSF License | 运行时环境 | 100% 商业与开源兼容 |
+| **Python** | `>= 3.11` | PSF License | 运行时环境 | 商业与开源兼容 |
 | **pyyaml** | `>= 6.0.1` | MIT License | 行业规则与配置文件解析 | 宽松商业许可，完全兼容 |
 | **pytest** | `>= 8.0.0` | MIT License | 离线自动化测试框架 | 宽松商业许可，完全兼容 |
 | **openJiuwen (agent-core)** | `release/v0.1.19` (Git Pin) | Apache License 2.0 | 底层执行引擎适配器 | 相同 Apache-2.0 协议，完全兼容 |

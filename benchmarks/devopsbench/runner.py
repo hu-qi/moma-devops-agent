@@ -383,8 +383,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     sweep.add_argument("--category", choices=["coding", "code-review", "ci-debug", "all"], default="all")
-    sweep.add_argument("--repeats", type=int, default=3, help="Runs per case per variant (minimum 3 for C22)")
-    sweep.add_argument("--variants", default="A0,A1,A2,A3", help="Comma-separated variant labels")
+    sweep.add_argument("--repeats", type=int, default=None, help="Runs per case per variant (overrides sweep-config.json)")
+    sweep.add_argument("--variants", default=None, help="Comma-separated variant labels (overrides sweep-config.json)")
+    sweep.add_argument("--include-holdout", action="store_true", help="Include holdout cases (default: exclude)")
+    sweep.add_argument("--config", default=None, help="Path to sweep-config.json (default: auto-detected)")
     sweep.add_argument(
         "--output",
         default=None,
@@ -398,50 +400,89 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def plan_sweep(category: str, repeats: int, variants: list[str]) -> dict[str, Any]:
+SWEEP_CONFIG_FILE = Path(__file__).resolve().parent / "sweep-config.json"
+
+
+def _load_sweep_config(config_path: str | None = None) -> dict[str, Any]:
+    """Load sweep-config.json — the single source of truth for A0–A3 contracts."""
+    path = Path(config_path) if config_path else SWEEP_CONFIG_FILE
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"sweep-config.json not found at {path}; the experiment contract "
+            "must be defined in this file, not split across docs and source."
+        )
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def plan_sweep(
+    category: str,
+    repeats: int | None,
+    variants: list[str] | None,
+    *,
+    include_holdout: bool = False,
+    config_path: str | None = None,
+) -> dict[str, Any]:
     """Compute the sweep scale without running anything (C22 transparency)."""
+    config = _load_sweep_config(config_path)
+    effective_repeats = repeats if repeats is not None else int(config.get("repeats_per_case", 3))
+    effective_variants = variants if variants is not None else sorted(config.get("variants", {}).keys())
+
     cases = []
     for case_dir in sorted(p for p in CASES_DIR.iterdir() if p.is_dir()):
         case = load_case(case_dir)
-        if category == "all" or case["category"] == category:
-            cases.append(
-                {
-                    "id": case["id"],
-                    "category": case["category"],
-                    "timeout_seconds": case["budget"]["timeout_seconds"],
-                    "max_model_calls": case["budget"]["max_model_calls"],
-                    "max_tool_calls": case["budget"]["max_tool_calls"],
-                }
-            )
-    total_runs = len(cases) * len(variants) * repeats
+        if category != "all" and case["category"] != category:
+            continue
+        if not include_holdout and case.get("holdout", False):
+            continue
+        cases.append(
+            {
+                "id": case["id"],
+                "category": case["category"],
+                "holdout": case.get("holdout", False),
+                "timeout_seconds": case["budget"]["timeout_seconds"],
+                "max_model_calls": case["budget"]["max_model_calls"],
+                "max_tool_calls": case["budget"]["max_tool_calls"],
+            }
+        )
+    total_runs = len(cases) * len(effective_variants) * effective_repeats
     total_model_calls_cap = sum(
         c["max_model_calls"] for c in cases
-    ) * len(variants) * repeats
+    ) * len(effective_variants) * effective_repeats
     return {
         "mode": "plan_only (no model calls executed)",
         "category": category,
         "cases": len(cases),
         "case_ids": [c["id"] for c in cases],
-        "variants": variants,
-        "repeats_per_case": repeats,
+        "variants": effective_variants,
+        "repeats_per_case": effective_repeats,
         "total_runs": total_runs,
         "upper_bound_model_calls": total_model_calls_cap,
-        "pricing_note": (
-            "MoMA per-model unit prices: https://ecloud.10086.cn/op-help-center/doc/article/91592 "
-            "(unverified prices are recorded as 'unestimated', never free)"
-        ),
-        "note": "Same case, same budget, same RC for all variants. Holdout cases (if marked) are excluded from tuning.",
+        "include_holdout": include_holdout,
+        "holdout_excluded": sum(1 for c in cases if c.get("holdout")),
+        "rc_tag": config.get("rc_tag", "unknown"),
+        "rc_sha": config.get("rc_sha", "unknown"),
+        "pricing_note": config.get("pricing", {}).get("source", "unknown"),
+        "note": "Same case, same budget, same RC for all variants. Config from sweep-config.json.",
     }
 
 
-def run_sweep(category: str, repeats: int, variants: list[str], output: Path) -> dict[str, Any]:
+def run_sweep(
+    category: str,
+    repeats: int | None,
+    variants: list[str] | None,
+    output: Path,
+    *,
+    include_holdout: bool = False,
+    config_path: str | None = None,
+) -> dict[str, Any]:
     """Execute the sweep deterministically where possible and write raw JSONL.
 
     C22 honesty: this offline sweep re-evaluates existing candidate workspaces;
     it does NOT fabricate model outputs. Variants without a prepared workspace
     produce a skipped record, keeping the raw file auditable.
     """
-    plan = plan_sweep(category, repeats, variants)
+    plan = plan_sweep(category, repeats, variants, include_holdout=include_holdout, config_path=config_path)
     plan["mode"] = "execute"
     records_written = 0
     with output.open("w", encoding="utf-8") as fh:
@@ -506,15 +547,23 @@ def main() -> None:
         raise SystemExit(0 if result["task_success"] else 1)
 
     if command == "sweep":
-        variants = [v.strip() for v in args.variants.split(",") if v.strip()]
-        repeats = max(1, args.repeats)
+        variants = [v.strip() for v in args.variants.split(",") if v.strip()] if args.variants else None
+        repeats = max(1, args.repeats) if args.repeats is not None else None
+        include_holdout = getattr(args, "include_holdout", False)
+        config_path = getattr(args, "config", None)
         if not args.execute:
-            print(json.dumps(plan_sweep(args.category, repeats, variants), ensure_ascii=False, indent=2))
+            print(json.dumps(
+                plan_sweep(args.category, repeats, variants, include_holdout=include_holdout, config_path=config_path),
+                ensure_ascii=False, indent=2,
+            ))
             raise SystemExit(0)
         if not args.output:
             print("--execute requires --output (raw JSONL path)", file=sys.stderr)
             raise SystemExit(2)
-        result = run_sweep(args.category, repeats, variants, Path(args.output))
+        result = run_sweep(
+            args.category, repeats, variants, Path(args.output),
+            include_holdout=include_holdout, config_path=config_path,
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         raise SystemExit(0)
 

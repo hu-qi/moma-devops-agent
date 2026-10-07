@@ -1,0 +1,49 @@
+{
+  "id": "coding.python.date_parser.001",
+  "version": "0.1.0",
+  "category": "coding",
+  "title": "Python date parser zero-padded months",
+  "description": "Repair a date parser that fails to handle zero-padded month values such as '03' for March.",
+  "task": "Fix parse_date so it correctly handles zero-padded month and day values.",
+  "fixture": {
+    "path": "fixture"
+  },
+  "constraints": {
+    "allowed_paths": [
+      "date_parser.py"
+    ],
+    "forbidden_paths": [
+      "test_date_parser.py"
+    ],
+    "max_changed_files": 1,
+    "read_only": false
+  },
+  "precondition": {
+    "type": "command-exit",
+    "command": "python test_date_parser.py",
+    "expected_exit_code": 1
+  },
+  "oracle": {
+    "type": "command-exit",
+    "command": "python test_date_parser.py",
+    "expected_exit_code": 0
+  },
+  "budget": {
+    "timeout_seconds": 30,
+    "max_model_calls": 10,
+    "max_tool_calls": 30
+  },
+  "risk": "low",
+  "industry": null,
+  "tags": [
+    "python",
+    "parsing",
+    "dates",
+    "deterministic"
+  ],
+  "provenance": {
+    "source": "DevOpsPilot synthetic fixture",
+    "license": "CC0-1.0",
+    "notes": "Created for deterministic benchmark validation."
+  }
+}

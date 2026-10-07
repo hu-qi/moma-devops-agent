@@ -244,7 +244,7 @@ python scripts/run_offline_checks.py
 
 ### R20：路径与命令审计
 
-新增只读文档检查脚本：解析 Markdown 相对链接及形如 `` `src/...` ``、`` `tests/...` `` 的仓库路径；不存在则失败。对 fenced shell 命令维护可执行 allowlist，在临时目录验证安装、离线测试、demo 和 report 示例。修正专家指南中的旧 `src/devopspilot/scm/` 等路径为真实 adapters 路径。
+新增只读文档检查脚本：解析 Markdown 相对链接及形如 `` `src/...` ``、`` `tests/...` `` 的仓库路径；不存在则失败。对 fenced shell 命令维护可执行 allowlist，在临时目录验证安装、离线测试、demo 和 report 示例。修正专家指南中的旧路径为真实 adapters 路径。
 
 ### R21：统一状态口径
 

@@ -108,6 +108,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Demonstration mode (default: deterministic)",
     )
 
+    # 6. serve
+    serve_p = subparsers.add_parser("serve", help="Launch the DevOpsPilot Web Management Dashboard")
+    serve_p.add_argument("--host", default="127.0.0.1", help="Host interface to bind (default: 127.0.0.1)")
+    serve_p.add_argument("--port", type=int, default=8080, help="Port to listen on (default: 8080)")
+    serve_p.add_argument("--db", default=".devopspilot/state.db", help="Path to state database")
+
     return parser
 
 
@@ -219,6 +225,12 @@ def format_state_markdown(delivery_id: str, version: int, state: Any) -> str:
 
 
 async def run_cli(args: argparse.Namespace) -> int:
+    if args.command == "serve":
+        from devopspilot.web.server import run_dashboard
+        db_p = Path(args.db) if args.db else None
+        run_dashboard(host=args.host, port=args.port, db_path=db_p)
+        return 0
+
     if args.command == "demo":
         # C09: demo modes must reflect real, verifiable evidence —
         # deterministic runs the local integration fixture suite,
