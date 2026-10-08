@@ -1,0 +1,123 @@
+[p1 "移动云开发者社区" | space "DevOpsPilot final official upload"(5): 1 managed, 0 untracked — p1* "移动云开发者社区"]
+root
+  container
+    container
+      image
+      text ""
+    container
+      container
+        container
+          anchor [ref=1]
+            text "MobileCloud"
+          anchor [ref=2]
+            text "最新活动"
+          anchor [ref=3]
+            text "产品"
+          anchor [ref=4]
+            text "解决方案"
+          anchor [ref=5]
+            text "定价"
+          anchor [ref=6]
+            text "云市场"
+          anchor [ref=7]
+            text "合作伙伴"
+          anchor [ref=8]
+            text "开发者"
+          anchor [ref=9]
+            text "服务与支持"
+          anchor [ref=10]
+            text "关于移动云"
+        container
+          text ""
+          text "帮助中心"
+          text "备案"
+          text "控制台"
+          text "YDY_152****7761_b5"
+      container
+        text "超值优选"
+        container
+          text ""
+          text ""
+  container
+    image
+    unordered_list
+      list_item
+        text "首   页"
+      list_item
+        text "关于大赛"
+      list_item
+        text "赛程安排"
+      list_item
+        text "赛事答疑"
+      list_item
+        text "新闻资讯"
+      list_item
+        text "联系我们"
+      list_item
+        text "我的大赛"
+  iframe [ref=11]
+    root
+      image
+      container
+        container
+          navigation "Breadcrumb"
+            container
+              link
+                anchor [ref=12]
+                  text "关于大赛"
+              text ""
+            container
+              link
+                anchor [ref=13]
+                  text "正赛"
+              text ""
+            container
+              link
+                anchor [ref=14]
+                  text "2026模型应用赛"
+              text ""
+            link
+              text "大赛详情"
+          container
+            text "2026模型应用赛"
+            text "已参赛"
+        iframe [ref=15]
+          root
+            container
+              tablist
+                tab [ref=17]
+                  text "大赛介绍"
+                tab [ref=18]
+                  text "赛事规则"
+                tab [ref=19]
+                  text "上传应用"
+                tab [ref=20]
+                  text "资料下载"
+                tab [ref=21]
+                  text "我的团队"
+                tab [ref=22]
+                  text "论坛讨论"
+              form
+                tablist
+                  tab [ref=23]
+                    text "上传应用"
+                text "请上传应用"
+                container
+                  container
+                    container [ref=24]
+                      text ""
+                    container
+                      text "【初赛作品】"
+                      text "只有队长可以提交作品;"
+                      text "作品提交剩余时间 07天 02时 00分 14秒"
+                  container
+                    text "上传须知："
+                    text "请使用附件2模板完成作品并打包上传"
+                container
+                  text "已上传的文件："
+                  container
+                    text ""
+                    text "CodeArts-胡琦-152****7761-DevOpsPilot.zip"
+                    text ""
+                button [ref=25]
+                  text "提交"

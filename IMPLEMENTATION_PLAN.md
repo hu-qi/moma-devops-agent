@@ -85,10 +85,10 @@
 **Goal**: 按官方队长信息命名并上传初赛作品。
 **Success Criteria**: 页面确认文件已上传。
 **Tests**: 上传后文件名与页面状态。
-**Status**: In Progress（官网团队信息被遮蔽，等待队长完整姓名和手机号以遵守命名规则）
+**Status**: Complete（用户提供命名信息，内部文件夹与ZIP一致；官网已显示已上传文件）
 
 ## Official Submission Stage 3: 正式提交与回执
 **Goal**: 用户已授权的最终提交，保存可核验结果。
 **Success Criteria**: 官网明确显示提交成功或已提交；否则记录阻断原因。
 **Tests**: 页面结果复核。
-**Status**: Not Started
+**Status**: Complete（已点击提交并确认；分片上传完成，重新进入上传页文件仍持久显示。没有审核通过或获奖结论）

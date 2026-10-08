@@ -1,5 +1,7 @@
 # DevOpsPilot
 
+2026-10-08已按官方命名上传并确认提交；[提交核验记录](docs/evidence/official-submission-2026-10-08.json)。官网重新进入上传页后已上传文件持久显示，审核结果尚未公布。
+
 2026-10-07参赛正式材料见 [完整交付目录](submission/DevOpsPilot-2026-10-07/README.md) 与 [RoadMap](docs/competition/ROADMAP.md)。最新证据与未完成边界以该目录评估报告为准。
 
 > **MoMA 驱动的自进化多智能体研发交付系统 (Autonomous DevOps Agent)**

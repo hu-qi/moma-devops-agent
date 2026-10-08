@@ -1,0 +1,22 @@
+{
+  "sha256": "4088e5b179201cc1f5995251ed38c2fe6daf9e0b3e23487d5d95f73797b43e47",
+  "bytes": 11239479,
+  "source_material_dir": "submission/DevOpsPilot-2026-10-08",
+  "format": "ZIP with official team-captain-phone-project root folder",
+  "attempt": "official UI submit confirmation accepted; chunk transfer observed 64 percent",
+  "checked_on": "2026-10-08",
+  "event_url": "https://ecloud.10086.cn/api/query/developer/user/home.html#match@ecloudcup",
+  "track": "2026模型应用赛",
+  "team": "CodeArts",
+  "status": "submitted_file_persisted",
+  "file_name_redacted": "CodeArts-胡琦-152****7761-DevOpsPilot.zip",
+  "actions": [
+    "selected ZIP",
+    "clicked 提交",
+    "confirmed 确定提交吗",
+    "chunk transfer observed 64%",
+    "transfer ended; official 已上传的文件 shows ZIP",
+    "left for 我的团队 and reopened 上传应用; same uploaded ZIP persists"
+  ],
+  "limits": "No judging/review result or separate receipt number shown; file upload and submit action verified. Uploaded package is frozen and not rewritten."
+}
