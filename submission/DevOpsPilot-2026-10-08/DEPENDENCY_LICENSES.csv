@@ -1,0 +1,230 @@
+package,version,declared_license,status
+Authlib,1.8.0,BSD-3-Clause,declared_metadata_only
+Mako,1.4.3,MIT,declared_metadata_only
+MarkupSafe,3.0.4,BSD-3-Clause,declared_metadata_only
+PyJWT,2.15.1,MIT,declared_metadata_only
+PyYAML,6.0.2,MIT,declared_metadata_only
+Pygments,2.21.0,BSD-2-Clause,declared_metadata_only
+SQLAlchemy,2.1.3,MIT,declared_metadata_only
+agentdescent,0.4.6,MIT,declared_metadata_only
+aiofile,3.12.3,Apache-2.0,declared_metadata_only
+aiofiles,25.1.0,Apache-2.0,declared_metadata_only
+aiohappyeyeballs,2.7.1,PSF-2.0,declared_metadata_only
+aiohttp,3.14.4,Apache-2.0 AND MIT,declared_metadata_only
+aiosignal,1.4.0,Apache 2.0,declared_metadata_only
+aiosqlite,0.22.1,License :: OSI Approved :: MIT License,declared_metadata_only
+alembic,1.20.0,MIT,declared_metadata_only
+annotated-doc,0.0.5,MIT,declared_metadata_only
+annotated-types,0.8.0,MIT,declared_metadata_only
+anthropic,1.11.0,MIT,declared_metadata_only
+anyio,4.15.1,MIT,declared_metadata_only
+attrs,26.1.0,MIT,declared_metadata_only
+babel,2.18.0,BSD-3-Clause,declared_metadata_only
+backports.tarfile,1.2.0,License :: OSI Approved :: MIT License,declared_metadata_only
+beartype,0.22.9,"MIT License
+
+Copyright (c) 2014-2025 Beartype authors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy [see distribution metadata]",declared_metadata_only
+beautifulsoup4,4.15.0,MIT License,declared_metadata_only
+cacheout,0.17.0,MIT,declared_metadata_only
+cachetools,7.2.1,MIT,declared_metadata_only
+caio,0.12.9,Apache-2.0,declared_metadata_only
+certifi,2026.7.22,MPL-2.0,declared_metadata_only
+cffi,2.1.1,MIT-0,declared_metadata_only
+charset-normalizer,3.5.2,MIT,declared_metadata_only
+click,8.5.0,BSD-3-Clause,declared_metadata_only
+contourpy,1.3.3,"BSD 3-Clause License
+
+ Copyright (c) 2021-2025, ContourPy Developers.
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ 1. Redistributions of source code must retain the above copy [see distribution metadata]",declared_metadata_only
+courlan,1.4.0,Apache-2.0,declared_metadata_only
+cryptography,50.0.2,Apache-2.0 OR BSD-3-Clause,declared_metadata_only
+cycler,0.12.1,"Copyright (c) 2015, matplotlib project
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditi [see distribution metadata]",declared_metadata_only
+cyclopts,5.2.0,Apache-2.0,declared_metadata_only
+dashscope,1.27.7,Apache 2.0,declared_metadata_only
+dateparser,1.4.3,BSD-3-Clause,declared_metadata_only
+devopspilot,0.1.0,Apache-2.0,declared_metadata_only
+devopspilot,0.1.0,Apache-2.0,declared_metadata_only
+dnspython,2.8.0,ISC,declared_metadata_only
+docstring_parser,0.18.0,MIT,declared_metadata_only
+docx2txt,0.9,unknown,declared_metadata_only
+email-validator,2.3.0,Unlicense,declared_metadata_only
+et_xmlfile,2.0.0,MIT,declared_metadata_only
+exceptiongroup,1.3.1,License :: OSI Approved :: MIT License,declared_metadata_only
+fastmcp,3.4.8,Apache-2.0,declared_metadata_only
+fastmcp-slim,3.4.8,Apache-2.0,declared_metadata_only
+filelock,4.0.12,MIT,declared_metadata_only
+fonttools,4.66.1,MIT,declared_metadata_only
+frozenlist,1.8.0,Apache-2.0,declared_metadata_only
+fsspec,2026.9.0,BSD-3-Clause,declared_metadata_only
+gitcode-api,1.3.4,MIT,declared_metadata_only
+googleapis-common-protos,1.75.5,Apache-2.0,declared_metadata_only
+greenlet,3.5.6,MIT AND PSF-2.0,declared_metadata_only
+griffelib,2.3.2,ISC,declared_metadata_only
+grpcio,1.84.0,Apache-2.0,declared_metadata_only
+h11,0.16.0,MIT,declared_metadata_only
+hf-xet,1.7.0,Apache-2.0,declared_metadata_only
+htmldate,1.11.0,Apache-2.0,declared_metadata_only
+httpcore,1.0.9,BSD-3-Clause,declared_metadata_only
+httpcore2,2.13.1,BSD-3-Clause,declared_metadata_only
+httpx,0.28.1,BSD-3-Clause,declared_metadata_only
+httpx-sse,0.4.3,MIT,declared_metadata_only
+httpx2,2.13.1,BSD-3-Clause,declared_metadata_only
+huggingface_hub,1.33.0,Apache-2.0,declared_metadata_only
+idna,3.20,BSD-3-Clause,declared_metadata_only
+importlib_metadata,9.0.1,Apache-2.0,declared_metadata_only
+iniconfig,2.0.0,MIT,declared_metadata_only
+jaraco.classes,3.4.0,License :: OSI Approved :: MIT License,declared_metadata_only
+jaraco.context,6.1.2,MIT,declared_metadata_only
+jaraco.functools,4.6.0,MIT,declared_metadata_only
+jiter,0.17.0,MIT,declared_metadata_only
+joserfc,1.7.5,BSD-3-Clause,declared_metadata_only
+json_repair,0.63.5,MIT,declared_metadata_only
+jsonref,1.1.0,MIT,declared_metadata_only
+jsonschema,4.26.0,MIT,declared_metadata_only
+jsonschema-path,0.5.0,Apache-2.0,declared_metadata_only
+jsonschema-specifications,2025.9.1,MIT,declared_metadata_only
+jusText,3.0.2,The BSD 2-Clause License,declared_metadata_only
+keyring,25.7.0,MIT,declared_metadata_only
+kiwisolver,1.5.1,"=========================
+ The Kiwi licensing terms
+=========================
+Kiwi is licensed under the terms of the Modified BSD License (also known as
+New or Revised BSD), as follows:
+
+Copyright (c) 2013-2026, Nucleic Development Team
+
+All rights reserved.
+
+Redistribution and use in source and bi [see distribution metadata]",declared_metadata_only
+loguru,0.7.3,License :: OSI Approved :: MIT License,declared_metadata_only
+lxml,6.1.3,BSD-3-Clause,declared_metadata_only
+lxml_html_clean,0.4.5,BSD-3-Clause,declared_metadata_only
+markdown-it-py,4.2.0,License :: OSI Approved :: MIT License,declared_metadata_only
+matplotlib,3.11.2,"License agreement for matplotlib versions 1.3.0 and later
+ =========================================================
+
+ 1. This LICENSE AGREEMENT is between the Matplotlib Development Team
+ (""MDT""), and the Individual or Organization (""Licensee"") accessing and
+ otherwise using matplotlib software in  [see distribution metadata]",declared_metadata_only
+mcp,1.30.0,MIT,declared_metadata_only
+mdurl,0.1.2,License :: OSI Approved :: MIT License,declared_metadata_only
+mermaid-py,0.8.4,MIT,declared_metadata_only
+more-itertools,11.1.0,MIT,declared_metadata_only
+multidict,6.9.1,Apache License 2.0,declared_metadata_only
+numpy,2.4.6,BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0,declared_metadata_only
+oauthlib,4.0.0,BSD-3-Clause,declared_metadata_only
+openai,3.26.0,Apache-2.0,declared_metadata_only
+openapi-pydantic,0.6.0,MIT,declared_metadata_only
+openjiuwen,0.1.18,unknown,declared_metadata_only
+openpyxl,3.1.5,MIT,declared_metadata_only
+opentelemetry-api,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-exporter-http-transport,0.66b1,Apache-2.0,declared_metadata_only
+opentelemetry-exporter-otlp-common,0.66b1,Apache-2.0,declared_metadata_only
+opentelemetry-exporter-otlp-proto-common,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-exporter-otlp-proto-grpc,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-exporter-otlp-proto-http,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-proto,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-sdk,1.45.1,Apache-2.0,declared_metadata_only
+opentelemetry-semantic-conventions,0.66b1,Apache-2.0,declared_metadata_only
+orjson,3.12.0,MPL-2.0 AND (Apache-2.0 OR MIT),declared_metadata_only
+packaging,26.3,Apache-2.0 OR BSD-2-Clause,declared_metadata_only
+pandas,3.0.6,"BSD 3-Clause License
+
+ Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team
+ All rights reserved.
+
+ Copyright (c) 2011-2026, Open source contributors.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted p [see distribution metadata]",declared_metadata_only
+pathable,0.6.0,Apache-2.0,declared_metadata_only
+pdfminer.six,20260107,MIT,declared_metadata_only
+pdfplumber,0.11.10,License :: OSI Approved :: MIT License,declared_metadata_only
+pillow,12.3.0,MIT-CMU,declared_metadata_only
+platformdirs,4.12.3,MIT,declared_metadata_only
+pluggy,1.5.0,MIT,declared_metadata_only
+portalocker,4.4.0,BSD-3-Clause,declared_metadata_only
+propcache,0.5.4,Apache-2.0,declared_metadata_only
+protobuf,7.36.2,3-Clause BSD License,declared_metadata_only
+py-key-value-aio,0.4.6,Apache-2.0,declared_metadata_only
+pycparser,3.0,BSD-3-Clause,declared_metadata_only
+pycryptodome,3.24.0,"BSD, Public Domain",declared_metadata_only
+pydantic,2.13.5,MIT,declared_metadata_only
+pydantic-settings,2.15.0,MIT,declared_metadata_only
+pydantic_core,2.46.5,MIT,declared_metadata_only
+pymilvus,2.6.9,License :: OSI Approved :: Apache Software License,declared_metadata_only
+pyoxigraph,0.5.11,MIT OR Apache-2.0,declared_metadata_only
+pyparsing,3.3.3,MIT,declared_metadata_only
+pypdfium2,5.14.0,"BSD-3-Clause, Apache-2.0, dependency licenses",declared_metadata_only
+pyperclip,1.11.0,BSD,declared_metadata_only
+pysbd,0.3.4,MIT,declared_metadata_only
+pytest,9.1.1,MIT,declared_metadata_only
+pytest-asyncio,1.4.0,Apache-2.0,declared_metadata_only
+python-dateutil,2.9.0.post0,Dual License,declared_metadata_only
+python-docx,1.2.0,MIT,declared_metadata_only
+python-dotenv,1.2.4,BSD-3-Clause,declared_metadata_only
+python-multipart,0.0.32,Apache-2.0,declared_metadata_only
+pytz,2026.5,MIT,declared_metadata_only
+referencing,0.37.0,MIT,declared_metadata_only
+regex,2026.9.29,Apache-2.0 AND CNRI-Python,declared_metadata_only
+requests,2.34.2,Apache-2.0,declared_metadata_only
+rich,15.0.0,MIT,declared_metadata_only
+rich-rst,2.2.0,MIT,declared_metadata_only
+rpds-py,2026.9.1,MIT,declared_metadata_only
+safetensors,0.8.0,License :: OSI Approved :: Apache Software License,declared_metadata_only
+setuptools,84.0.0,MIT,declared_metadata_only
+shellingham,1.5.4,ISC License,declared_metadata_only
+six,1.17.0,MIT,declared_metadata_only
+sniffio,1.3.1,MIT OR Apache-2.0,declared_metadata_only
+soupsieve,2.10,MIT,declared_metadata_only
+sqlmodel,0.0.48,MIT,declared_metadata_only
+sse-starlette,3.5.0,BSD-3-Clause,declared_metadata_only
+starlette,1.7.0,BSD-3-Clause,declared_metadata_only
+tenacity,9.1.4,Apache 2.0,declared_metadata_only
+tiktoken,0.14.0,"MIT License
+
+Copyright (c) 2022 OpenAI, Shantanu Jain
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, [see distribution metadata]",declared_metadata_only
+tld,0.13.2,MPL-1.1 OR GPL-2.0-only OR LGPL-2.1-or-later,declared_metadata_only
+tokenizers,0.23.2,License :: OSI Approved :: Apache Software License,declared_metadata_only
+tqdm,4.70.1,MPL-2.0 AND MIT,declared_metadata_only
+trafilatura,2.3.1,Apache-2.0,declared_metadata_only
+transformers,5.19.0,Apache 2.0 License,declared_metadata_only
+truststore,0.10.4,MIT,declared_metadata_only
+typer,0.27.3,MIT,declared_metadata_only
+typing-inspection,0.4.4,MIT,declared_metadata_only
+typing_extensions,4.16.0,PSF-2.0,declared_metadata_only
+tzlocal,5.4.4,MIT,declared_metadata_only
+uncalled-for,0.4.0,"# Released under MIT License
+
+Copyright (c) 2025 Chris Guidry.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the ""Software""), to deal in the Software without restriction, including without limitation the rights to u [see distribution metadata]",declared_metadata_only
+urllib3,2.8.0,MIT,declared_metadata_only
+uvicorn,0.54.0,BSD-3-Clause,declared_metadata_only
+watchfiles,1.3.0,MIT,declared_metadata_only
+websocket-client,1.9.2,Apache-2.0,declared_metadata_only
+websockets,17.2,BSD-3-Clause,declared_metadata_only
+yarl,1.25.1,Apache-2.0,declared_metadata_only
+zipp,4.1.1,MIT,declared_metadata_only

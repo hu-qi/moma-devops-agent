@@ -1,0 +1,68 @@
+{
+  "checked_at": 1791384821.1964438,
+  "kind": "current_code_read_only_remote",
+  "remote_writes": 0,
+  "projects": [
+    {
+      "provider": "atomgit",
+      "repo": "huqi/moma-devops-agent",
+      "status": "success",
+      "issue_count": 0,
+      "ci_count": 0,
+      "synced_at": 1791384824.9102368
+    },
+    {
+      "provider": "github",
+      "repo": "hu-qi/moma-devops-agent",
+      "status": "success",
+      "issue_count": 3,
+      "ci_count": 15,
+      "synced_at": 1791384828.509869
+    }
+  ],
+  "moma_inference": {
+    "status": "success",
+    "model": "deepseek-v4.1-flash",
+    "usage": {
+      "prompt_tokens": 290,
+      "total_tokens": 359,
+      "completion_tokens": 69,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "created_cache_tokens": 0,
+        "multimodal_tokens": null
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 59
+      }
+    },
+    "answer": "有 1 条交付记录。"
+  },
+  "runtime": {
+    "moma_configured": true,
+    "api_base": "https://zhenze-huhehaote.cmecloud.cn/v1",
+    "openjiuwen_installed": true,
+    "models": {
+      "vod": "deepseek-v4.1-flash",
+      "issue": "GLM-5.3",
+      "coding": "Qwen3-32B",
+      "qa": "deepseek-v4.1-flash",
+      "sre": "GLM-5.3"
+    },
+    "providers": {
+      "github": {
+        "configured": true,
+        "live_delivery_supported": true
+      },
+      "atomgit": {
+        "configured": true,
+        "live_delivery_supported": true
+      },
+      "cnb": {
+        "configured": true,
+        "live_delivery_supported": false
+      }
+    },
+    "db": "devopspilot.db"
+  }
+}

@@ -74,3 +74,21 @@
 **Success Criteria**: 文件完整、校验通过、无凭据和本地运行垃圾；官网提交待用户确认。
 **Tests**: 清单校验、ZIP 解压、源代码回归、敏感信息检查。
 **Status**: Complete（材料完整性与敏感值扫描通过；官网上传及队长私密命名待完成）
+
+## Official Submission Stage 1: 更新材料与官方要求
+**Goal**: 替换机械配音视频，重新校验统一模板、材料和隐私。
+**Success Criteria**: 官方内容完整、字幕视频真实、凭据扫描和ZIP校验通过。
+**Tests**: 文件清单、SHA256、递归凭据扫描。
+**Status**: Complete
+
+## Official Submission Stage 2: 命名与上传
+**Goal**: 按官方队长信息命名并上传初赛作品。
+**Success Criteria**: 页面确认文件已上传。
+**Tests**: 上传后文件名与页面状态。
+**Status**: In Progress（官网团队信息被遮蔽，等待队长完整姓名和手机号以遵守命名规则）
+
+## Official Submission Stage 3: 正式提交与回执
+**Goal**: 用户已授权的最终提交，保存可核验结果。
+**Success Criteria**: 官网明确显示提交成功或已提交；否则记录阻断原因。
+**Tests**: 页面结果复核。
+**Status**: Not Started

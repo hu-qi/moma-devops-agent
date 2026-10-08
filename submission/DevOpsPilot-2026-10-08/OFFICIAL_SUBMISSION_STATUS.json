@@ -1,0 +1,15 @@
+{
+  "checked_on": "2026-10-08",
+  "event_url": "https://ecloud.10086.cn/api/query/developer/user/home.html#match@ecloudcup",
+  "track": "2026模型应用赛",
+  "registered": true,
+  "team": "CodeArts",
+  "existing_uploaded_files": 0,
+  "remaining_time_observed": "07天02时42分25秒",
+  "required_folder_pattern": "团队名称-队长姓名-队长手机号-作品名称",
+  "identity_source": "official team page masked; do not infer account number as captain phone",
+  "upload_status": "not_uploaded",
+  "submission_status": "pending_captain_name_and_phone",
+  "authorization": "user explicitly authorized upload and submit 2026-10-08",
+  "video_revision": "115 seconds captioned story; rejected mechanical narration removed"
+}
