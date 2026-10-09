@@ -1,0 +1,22 @@
+[Unit]
+Description=DevOpsPilot management console
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=devopspilot
+Group=devopspilot
+WorkingDirectory=/opt/devopspilot
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/devopspilot/.venv/bin/python /opt/devopspilot/scripts/serve_dashboard.py --host 127.0.0.1 --port 8080 --db /var/lib/devopspilot/state.db
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

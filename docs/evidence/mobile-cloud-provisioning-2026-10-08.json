@@ -1,0 +1,40 @@
+{
+  "observed_date": "2026-10-08",
+  "pool": "CIDC-RP-29",
+  "region": "华北-北京3",
+  "source": "authenticated competition cloud console",
+  "ecs": {
+    "name": "devopspilot-console",
+    "id": "5f54db32-f8b0-45eb-8775-dd8e617e0eaa",
+    "state": "运行中",
+    "image": "Ubuntu 24.04 64位",
+    "spec": "c5.large.2",
+    "cpu": 2,
+    "memory_gb": 4,
+    "system_disk_gb": 40,
+    "private_ip": "192.168.10.64",
+    "order_payable_cny": 0,
+    "expires_at": "2026-11-08 14:18:22",
+    "auto_renew": false
+  },
+  "vpc": {
+    "name": "vpc-devopspilot",
+    "id": "373f40b4aef64e3792681660f99826af",
+    "state": "启用",
+    "subnet": "192.168.10.0/24",
+    "order_payable": "免费"
+  },
+  "eip": {
+    "ip": "36.137.203.138",
+    "bandwidth_mbps": 1,
+    "reused_existing": true,
+    "bound_to_ecs": true,
+    "expires_at": "2026-10-25 09:37:38"
+  },
+  "security_group": "sg-devopspilot",
+  "public_source_cidr": "103.88.46.0/24",
+  "security_group_changed": false,
+  "app_installed": false,
+  "acceptance": "pending",
+  "blocker": "Three VNC root login attempts failed; official password reset awaits account-holder identity verification."
+}

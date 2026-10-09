@@ -92,3 +92,21 @@
 **Success Criteria**: 官网明确显示提交成功或已提交；否则记录阻断原因。
 **Tests**: 页面结果复核。
 **Status**: Complete（已点击提交并确认；分片上传完成，重新进入上传页文件仍持久显示。没有审核通过或获奖结论）
+
+## Cloud Stage 1: 资源与报备核验
+**Goal**: 确认账号、资源池、ECS/VPC/EIP和部署端口。
+**Success Criteria**: 实际控制台和邮件证据一致，已分配与未开通分开。
+**Tests**: 北京3资源列表、组委会报备回复、源码运行入口检查。
+**Status**: Complete（见docs/deployment/mobile-cloud-readiness.md）
+
+## Cloud Stage 2: 免费资源开通与实例部署
+**Goal**: 确认大赛免费开通方式后，部署现有Web/Runtime与持久状态。
+**Success Criteria**: 实际实例可运行，凭据与写接口受限，未新增未经报备的公网规则。
+**Tests**: Linux安装、服务启动、重启持久化与网络限制。
+**Status**: In Progress（免费ECS/VPC已开通，现有EIP已绑定；Linux登录失败，官方密码重置待本人身份验证，尚未安装服务）
+
+## Cloud Stage 3: 云端验收
+**Goal**: 真实云端项目/Issue读取、MoMA调用与证据下载。
+**Success Criteria**: 实例/公网IP/同版本运行证据可追溯。
+**Tests**: 真实API、浏览器、恢复和失败路径。
+**Status**: Not Started
