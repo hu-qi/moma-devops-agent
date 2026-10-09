@@ -103,10 +103,10 @@
 **Goal**: 确认大赛免费开通方式后，部署现有Web/Runtime与持久状态。
 **Success Criteria**: 实际实例可运行，凭据与写接口受限，未新增未经报备的公网规则。
 **Tests**: Linux安装、服务启动、重启持久化与网络限制。
-**Status**: In Progress（免费ECS/VPC已开通，现有EIP已绑定；Linux登录失败，官方密码重置待本人身份验证，尚未安装服务）
+**Status**: Complete（ECS/VPC/EIP、非root服务、固定OpenJiuwen、真实配置、SQLite备份和重启持久化已核验；见docs/deployment/mobile-cloud-acceptance.md）
 
 ## Cloud Stage 3: 云端验收
 **Goal**: 真实云端项目/Issue读取、MoMA调用与证据下载。
 **Success Criteria**: 实例/公网IP/同版本运行证据可追溯。
 **Tests**: 真实API、浏览器、恢复和失败路径。
-**Status**: Not Started
+**Status**: In Progress（云内页面/API、GitHub与AtomGit真实读取、MoMA调用通过；当前客户端外部浏览器访问失败，评审接入未验收）
