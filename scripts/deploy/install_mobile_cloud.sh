@@ -12,6 +12,9 @@ fi
   echo 'Source or private environment file is missing.' >&2
   exit 1
 }
+# Package files must remain readable by the dedicated service user even when
+# the operator used umask 077 for the separate credential transfer.
+umask 022
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y python3-venv python3-pip git nginx curl
